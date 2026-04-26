@@ -75,10 +75,34 @@ router.put('/:complaint_id/status', verifyToken, (req, res) => {
     WHERE complaint_id = ?
   `;
 
-  db.query(sql, [status, complaint_id], (err) => {
+  db.query(sql, [status, complaint_id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
 
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
     res.json({ message: 'Complaint status updated successfully' });
+  });
+});
+
+// PROTECTED: DELETE COMPLAINT
+router.delete('/:complaint_id', verifyToken, (req, res) => {
+  const { complaint_id } = req.params;
+
+  const sql = `
+    DELETE FROM complaints
+    WHERE complaint_id = ?
+  `;
+
+  db.query(sql, [complaint_id], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    res.json({ message: 'Complaint deleted successfully' });
   });
 });
 
