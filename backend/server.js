@@ -18,7 +18,13 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) return callback(null, true);
+
+    const isAllowed =
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app');
+
+    if (isAllowed) {
       callback(null, true);
     } else {
       console.error('CORS blocked origin:', origin);
@@ -30,18 +36,15 @@ app.use(cors({
 
 app.use(express.json());
 
-// ROUTES
 app.use('/api/auth', authRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/instructors', instructorRoutes);
 app.use('/api/complaints', complaintRoutes);
 
-// ROOT
 app.get('/', (req, res) => {
   res.send('CPE Complaint System Backend is running');
 });
 
-// DB TEST
 app.get('/api/db-test', (req, res) => {
   db.query('SELECT 1 AS connected', (error, rows) => {
     if (error) {
@@ -53,7 +56,6 @@ app.get('/api/db-test', (req, res) => {
   });
 });
 
-// 404 FALLBACK
 app.use((req, res) => {
   res.status(404).json({
     error: 'Route not found',
