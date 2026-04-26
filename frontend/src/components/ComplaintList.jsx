@@ -41,6 +41,24 @@ function ComplaintList() {
       });
   };
 
+  const deleteComplaint = (complaintId) => {
+    const confirmDelete = window.confirm(
+      'Are you sure you want to delete this complaint response? This action cannot be undone.'
+    );
+
+    if (!confirmDelete) return;
+
+    api.delete(`/complaints/${complaintId}`)
+      .then(() => {
+        fetchComplaints();
+        showToast('Complaint response deleted successfully.');
+      })
+      .catch(err => {
+        console.error(err);
+        showToast(err.response?.data?.error || 'Failed to delete complaint response.');
+      });
+  };
+
   const instructors = [...new Set(complaints.map(c => c.instructor_name))];
   const categories = [...new Set(complaints.map(c => c.category))];
 
@@ -282,6 +300,14 @@ function ComplaintList() {
                         onClick={() => updateStatus(complaint.complaint_id, 'Rejected')}
                       >
                         Reject
+                      </button>
+
+                      <button
+                        type="button"
+                        className="small-btn delete-btn"
+                        onClick={() => deleteComplaint(complaint.complaint_id)}
+                      >
+                        Delete
                       </button>
                     </div>
                   </td>
