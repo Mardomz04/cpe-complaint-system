@@ -37,56 +37,40 @@ app.use('/api/subjects', subjectRoutes);
 app.use('/api/instructors', instructorRoutes);
 app.use('/api/complaints', complaintRoutes);
 
-app.get('/', (req, res) => {
-  res.send('CPE Complaint System Backend is running');
-});
-
-// DB TEST ROUTE
-app.get('/api/db-test', (req, res) => {
-  db.query('SELECT 1 AS connected', (error, rows) => {
-    if (error) {
-      console.error('DB TEST ERROR:', error);
-      return res.status(500).json({ error: error.message });
-    }
-
-    res.json({ success: true, result: rows });
-  });
-});
-
-// TEMPORARY CREATE ADMIN ROUTE
 app.get('/api/create-admin-temp', async (req, res) => {
+  console.log('STEP 1: Route hit');
+
   const username = 'admin';
   const password = 'admin123';
 
   try {
+    console.log('STEP 2: Hashing password...');
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    console.log('STEP 3: Running INSERT...');
+
     db.query(
-      'DELETE FROM admins WHERE username = ?',
-      [username],
-      (deleteErr) => {
-        if (deleteErr) {
-          return res.status(500).json({ error: deleteErr.message });
+      'INSERT INTO admins (username, password_hash) VALUES (?, ?)',
+      [username, hashedPassword],
+      (err, result) => {
+        console.log('STEP 4: Query callback reached');
+
+        if (err) {
+          console.error('QUERY ERROR:', err);
+          return res.status(500).json({ error: err.message });
         }
 
-        db.query(
-          'INSERT INTO admins (username, password_hash) VALUES (?, ?)',
-          [username, hashedPassword],
-          (insertErr) => {
-            if (insertErr) {
-              return res.status(500).json({ error: insertErr.message });
-            }
+        console.log('STEP 5: Success');
 
-            res.json({
-              message: 'Admin created successfully',
-              username,
-              password
-            });
-          }
-        );
+        res.json({
+          message: 'Admin created',
+          username,
+          password
+        });
       }
     );
   } catch (error) {
+    console.error('BCRYPT ERROR:', error);
     res.status(500).json({ error: error.message });
   }
 });
