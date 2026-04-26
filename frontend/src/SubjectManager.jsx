@@ -12,7 +12,10 @@ function SubjectManager() {
   const fetchSubjects = () => {
     api.get('/subjects')
       .then(res => setSubjects(res.data))
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        setMessage('Error loading subjects.');
+      });
   };
 
   useEffect(() => {
@@ -45,14 +48,32 @@ function SubjectManager() {
       })
       .catch(err => {
         console.error(err);
-        setMessage('Error adding subject.');
+        setMessage(err.response?.data?.error || 'Error adding subject.');
+      });
+  };
+
+  const handleDelete = (subjectId) => {
+    const confirmDelete = window.confirm(
+      'Are you sure you want to delete this subject?'
+    );
+
+    if (!confirmDelete) return;
+
+    api.delete(`/subjects/${subjectId}`)
+      .then(() => {
+        setMessage('Subject deleted successfully.');
+        fetchSubjects();
+      })
+      .catch(err => {
+        console.error(err);
+        setMessage(err.response?.data?.error || 'Error deleting subject.');
       });
   };
 
   return (
     <div className="card">
       <h2>Manage Subjects</h2>
-      <p className="section-desc">Add subject codes and descriptions used in the complaint form.</p>
+      <p className="section-desc">Add or remove subject codes and descriptions used in the complaint form.</p>
 
       <form className="manager-form" onSubmit={handleSubmit}>
         <div className="form-group">
@@ -89,13 +110,14 @@ function SubjectManager() {
               <th>Subject Code</th>
               <th>Description</th>
               <th>Date Added</th>
+              <th>Action</th>
             </tr>
           </thead>
 
           <tbody>
             {subjects.length === 0 ? (
               <tr>
-                <td colSpan="3">No subjects added yet.</td>
+                <td colSpan="4">No subjects added yet.</td>
               </tr>
             ) : (
               subjects.map(subject => (
@@ -103,6 +125,15 @@ function SubjectManager() {
                   <td>{subject.subject_code}</td>
                   <td>{subject.subject_description}</td>
                   <td>{new Date(subject.created_at).toLocaleString()}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="small-btn reject-btn"
+                      onClick={() => handleDelete(subject.subject_id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
