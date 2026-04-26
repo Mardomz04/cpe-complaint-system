@@ -5,8 +5,6 @@ require('dotenv').config();
 
 const db = require('./config/db');
 
-const verifyToken = require('./middleware/authMiddleware');
-
 const subjectRoutes = require('./routes/subjectRoutes');
 const instructorRoutes = require('./routes/instructorRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
@@ -32,40 +30,51 @@ app.use(cors({
 
 app.use(express.json());
 
+// ROUTES
 app.use('/api/auth', authRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/instructors', instructorRoutes);
 app.use('/api/complaints', complaintRoutes);
 
-app.get('/api/create-admin-temp', async (req, res) => {
-  console.log('STEP 1: Route hit');
+// ROOT
+app.get('/', (req, res) => {
+  res.send('CPE Complaint System Backend is running');
+});
 
+// DB TEST
+app.get('/api/db-test', (req, res) => {
+  db.query('SELECT 1 AS connected', (error, rows) => {
+    if (error) {
+      console.error('DB TEST ERROR:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ success: true, result: rows });
+  });
+});
+
+// 🔥 TEMP RESET ADMIN PASSWORD (SAFE)
+app.get('/api/create-admin-temp', async (req, res) => {
   const username = 'admin';
   const password = 'admin123';
 
   try {
-    console.log('STEP 2: Hashing password...');
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    console.log('STEP 3: Running INSERT...');
-
     db.query(
-      'INSERT INTO admins (username, password_hash) VALUES (?, ?)',
-      [username, hashedPassword],
+      'UPDATE admins SET password_hash = ? WHERE username = ?',
+      [hashedPassword, username],
       (err, result) => {
-        console.log('STEP 4: Query callback reached');
-
         if (err) {
-          console.error('QUERY ERROR:', err);
+          console.error('UPDATE ADMIN ERROR:', err);
           return res.status(500).json({ error: err.message });
         }
 
-        console.log('STEP 5: Success');
-
         res.json({
-          message: 'Admin created',
+          message: 'Admin password reset successfully',
           username,
-          password
+          password,
+          affectedRows: result.affectedRows
         });
       }
     );
