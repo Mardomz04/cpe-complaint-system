@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
@@ -31,7 +30,6 @@ router.get('/', (req, res) => {
   });
 });
 
-=======
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
@@ -64,5 +62,4 @@ router.get('/', (req, res) => {
   });
 });
 
->>>>>>> 51647ce9afc43e3b298509a28c0b9efd31c06b5b
 module.exports = router;
