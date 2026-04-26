@@ -4,7 +4,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 function QRCodeBox() {
   const [show, setShow] = useState(false);
 
-  const complaintLink = `${window.location.origin}/qr`;
+  const complaintLink = 'https://cpe-complaint-system.vercel.app/complaint';
 
   return (
     <div
