@@ -1,10 +1,39 @@
 import { useEffect, useState } from 'react';
 import { Pie } from 'react-chartjs-2';
-import ChartDataLabels from 'chartjs-plugin-datalabels';
-import { Chart as ChartJS } from 'chart.js/auto';
+import 'chart.js/auto';
 import api from '../api';
 
-ChartJS.register(ChartDataLabels);
+const percentageLabelPlugin = {
+  id: 'percentageLabelPlugin',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    const dataset = chart.data.datasets[0];
+    const meta = chart.getDatasetMeta(0);
+
+    if (!dataset || !meta) return;
+
+    const total = dataset.data.reduce((sum, value) => sum + value, 0);
+    if (total === 0) return;
+
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    meta.data.forEach((element, index) => {
+      const value = dataset.data[index];
+      const percentage = ((value / total) * 100).toFixed(1);
+
+      if (percentage <= 0) return;
+
+      const position = element.tooltipPosition();
+      ctx.fillText(`${percentage}%`, position.x, position.y);
+    });
+
+    ctx.restore();
+  }
+};
 
 function Stats() {
   const [data, setData] = useState(null);
@@ -28,6 +57,7 @@ function Stats() {
     api.get('/instructors')
       .then(res => {
         setInstructors(res.data);
+
         if (res.data.length > 0) {
           setSelectedInstructor(res.data[0].instructor_id);
         }
@@ -69,7 +99,6 @@ function Stats() {
   const complaintHandlingMeaning =
     summary.pending > summary.resolved ? 'delayed resolution' : 'effective handling';
 
-  // ✅ CATEGORY CHART
   const categoryChart = {
     labels: data.categories.map(c => c.category),
     datasets: [
@@ -77,13 +106,12 @@ function Stats() {
         label: 'Complaint Categories',
         data: data.categories.map(c => c.count),
         backgroundColor: ['#3b82f6', '#22c55e', '#f97316', '#ef4444', '#a855f7'],
-        borderColor: '#fff',
+        borderColor: '#ffffff',
         borderWidth: 2
       }
     ]
   };
 
-  // ✅ SEVERITY CHART (FIXED COLORS)
   const severityChart = {
     labels: data.severity.map(s => s.severity_level),
     datasets: [
@@ -96,32 +124,18 @@ function Stats() {
           if (s.severity_level.toLowerCase() === 'low') return '#22c55e';
           return '#9ca3af';
         }),
-        borderColor: '#fff',
+        borderColor: '#ffffff',
         borderWidth: 2
       }
     ]
   };
 
-  // ✅ COMMON OPTIONS WITH PERCENTAGE LABELS
   const pieOptions = {
     maintainAspectRatio: false,
     plugins: {
       legend: {
         labels: {
-          color: '#fff'
-        }
-      },
-      datalabels: {
-        color: '#fff',
-        font: {
-          weight: 'bold',
-          size: 14
-        },
-        formatter: (value, context) => {
-          const dataArr = context.chart.data.datasets[0].data;
-          const total = dataArr.reduce((a, b) => a + b, 0);
-          const percentage = ((value / total) * 100).toFixed(1);
-          return `${percentage}%`;
+          color: '#ffffff'
         }
       }
     }
@@ -211,14 +225,22 @@ function Stats() {
         <div className="chart-panel">
           <h3>Complaint Categories</h3>
           <div className="chart-box">
-            <Pie data={categoryChart} options={pieOptions} />
+            <Pie
+              data={categoryChart}
+              options={pieOptions}
+              plugins={[percentageLabelPlugin]}
+            />
           </div>
         </div>
 
         <div className="chart-panel">
           <h3>Severity Levels</h3>
           <div className="chart-box">
-            <Pie data={severityChart} options={pieOptions} />
+            <Pie
+              data={severityChart}
+              options={pieOptions}
+              plugins={[percentageLabelPlugin]}
+            />
           </div>
         </div>
       </div>
