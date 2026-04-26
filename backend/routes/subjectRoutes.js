@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
@@ -30,4 +31,38 @@ router.get('/', (req, res) => {
   });
 });
 
+=======
+const express = require('express');
+const router = express.Router();
+const db = require('../config/db');
+
+// Add subject
+router.post('/', (req, res) => {
+  const { subject_code, subject_description } = req.body;
+
+  const sql = 'INSERT INTO subjects (subject_code, subject_description) VALUES (?, ?)';
+
+  db.query(sql, [subject_code, subject_description], (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+
+    res.json({ message: 'Subject added successfully', subject_id: result.insertId });
+  });
+});
+
+// Get all subjects
+router.get('/', (req, res) => {
+  const sql = 'SELECT * FROM subjects ORDER BY created_at DESC';
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+
+    res.json(results);
+  });
+});
+
+>>>>>>> 51647ce9afc43e3b298509a28c0b9efd31c06b5b
 module.exports = router;
