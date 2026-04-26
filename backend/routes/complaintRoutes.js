@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 console.log("🔥 complaintRoutes LOADED");
 
 const express = require('express');
@@ -194,7 +193,6 @@ router.put('/:id/status', verifyToken, (req, res) => {
   });
 });
 
-=======
 console.log("🔥 complaintRoutes LOADED");
 
 const express = require('express');
@@ -390,5 +388,4 @@ router.put('/:id/status', verifyToken, (req, res) => {
   });
 });
 
->>>>>>> 51647ce9afc43e3b298509a28c0b9efd31c06b5b
 module.exports = router;
