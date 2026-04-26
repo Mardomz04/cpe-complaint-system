@@ -17,11 +17,11 @@ function ComplaintForm() {
   });
 
   useEffect(() => {
-    api.get('/api/subjects')
+    api.get('/subjects')
       .then(res => setSubjects(res.data))
       .catch(err => console.error('Subjects error:', err));
 
-    api.get('/api/instructors')
+    api.get('/instructors')
       .then(res => setInstructors(res.data))
       .catch(err => console.error('Instructors error:', err));
   }, []);
@@ -50,7 +50,7 @@ function ComplaintForm() {
     setLoading(true);
     setMessage('');
 
-    api.post('/api/complaints', form)
+    api.post('/complaints', form)
       .then(() => {
         setSubmitted(true);
         setForm({
