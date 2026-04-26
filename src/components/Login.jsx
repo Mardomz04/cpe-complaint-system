@@ -13,7 +13,7 @@ function Login({ setIsAuthenticated }) {
     e.preventDefault();
     setError('');
 
-    api.post('http://localhost:5000/api/auth/login', {
+    api.post('/auth/login', {
       username,
       password
     })
