@@ -9,7 +9,10 @@ function InstructorManager() {
   const fetchInstructors = () => {
     api.get('/instructors')
       .then(res => setInstructors(res.data))
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        setMessage('Error loading instructors.');
+      });
   };
 
   useEffect(() => {
@@ -34,14 +37,32 @@ function InstructorManager() {
       })
       .catch(err => {
         console.error(err);
-        setMessage('Error adding instructor.');
+        setMessage(err.response?.data?.error || 'Error adding instructor.');
+      });
+  };
+
+  const handleDelete = (instructorId) => {
+    const confirmDelete = window.confirm(
+      'Are you sure you want to delete this instructor?'
+    );
+
+    if (!confirmDelete) return;
+
+    api.delete(`/instructors/${instructorId}`)
+      .then(() => {
+        setMessage('Instructor deleted successfully.');
+        fetchInstructors();
+      })
+      .catch(err => {
+        console.error(err);
+        setMessage(err.response?.data?.error || 'Error deleting instructor.');
       });
   };
 
   return (
     <div className="card">
       <h2>Manage Instructors</h2>
-      <p className="section-desc">Add instructor names that students can select in the complaint form.</p>
+      <p className="section-desc">Add or remove instructor names that students can select in the complaint form.</p>
 
       <form className="manager-form" onSubmit={handleSubmit}>
         <div className="form-group">
@@ -65,19 +86,29 @@ function InstructorManager() {
             <tr>
               <th>Instructor Name</th>
               <th>Date Added</th>
+              <th>Action</th>
             </tr>
           </thead>
 
           <tbody>
             {instructors.length === 0 ? (
               <tr>
-                <td colSpan="2">No instructors added yet.</td>
+                <td colSpan="3">No instructors added yet.</td>
               </tr>
             ) : (
               instructors.map(instructor => (
                 <tr key={instructor.instructor_id}>
                   <td>{instructor.instructor_name}</td>
                   <td>{new Date(instructor.created_at).toLocaleString()}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="small-btn reject-btn"
+                      onClick={() => handleDelete(instructor.instructor_id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
