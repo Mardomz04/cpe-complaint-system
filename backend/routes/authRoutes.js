@@ -4,16 +4,37 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 
+// TEMP: RESET ADMIN PASSWORD
+router.get('/reset-admin-temp', async (req, res) => {
+  try {
+    const username = 'admin';
+    const password = 'admin123';
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    db.query(
+      'UPDATE admins SET password_hash = ? WHERE username = ?',
+      [hashedPassword, username],
+      (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        res.json({
+          message: 'Admin password reset successfully',
+          username,
+          password,
+          affectedRows: result.affectedRows
+        });
+      }
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // LOGIN ADMIN
 router.post('/login', (req, res) => {
   console.log('LOGIN ROUTE HIT');
 
   const { username, password } = req.body;
-
-  if (!username || !password) {
-    console.log('Missing username or password');
-    return res.status(400).json({ error: 'Username and password are required' });
-  }
 
   const sql = `
     SELECT * FROM admins
@@ -22,10 +43,7 @@ router.post('/login', (req, res) => {
   `;
 
   db.query(sql, [username], async (err, results) => {
-    if (err) {
-      console.error('LOGIN DB ERROR:', err);
-      return res.status(500).json({ error: err.message });
-    }
+    if (err) return res.status(500).json({ error: err.message });
 
     console.log('LOGIN DB RESULTS:', results.length);
 
@@ -38,16 +56,10 @@ router.post('/login', (req, res) => {
 
       console.log('Checking password...');
       const passwordMatch = await bcrypt.compare(password, admin.password_hash);
-
       console.log('Password match:', passwordMatch);
 
       if (!passwordMatch) {
         return res.status(401).json({ error: 'Invalid username or password' });
-      }
-
-      if (!process.env.JWT_SECRET) {
-        console.error('JWT_SECRET is missing');
-        return res.status(500).json({ error: 'Server JWT secret missing' });
       }
 
       const token = jwt.sign(
@@ -59,7 +71,7 @@ router.post('/login', (req, res) => {
         { expiresIn: '2h' }
       );
 
-      return res.json({
+      res.json({
         message: 'Login successful',
         token,
         admin: {
@@ -68,8 +80,7 @@ router.post('/login', (req, res) => {
         }
       });
     } catch (error) {
-      console.error('LOGIN PROCESS ERROR:', error);
-      return res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   });
 });
