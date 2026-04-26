@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 
 function ComplaintForm() {
   const [subjects, setSubjects] = useState([]);
@@ -17,11 +17,11 @@ function ComplaintForm() {
   });
 
   useEffect(() => {
-    axios.get('/api/subjects')
+    api.get('/api/subjects')
       .then(res => setSubjects(res.data))
       .catch(err => console.error('Subjects error:', err));
 
-    axios.get('/api/instructors')
+    api.get('/api/instructors')
       .then(res => setInstructors(res.data))
       .catch(err => console.error('Instructors error:', err));
   }, []);
@@ -50,7 +50,7 @@ function ComplaintForm() {
     setLoading(true);
     setMessage('');
 
-    axios.post('/api/complaints', form)
+    api.post('/api/complaints', form)
       .then(() => {
         setSubmitted(true);
         setForm({
