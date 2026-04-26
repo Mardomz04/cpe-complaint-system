@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 const db = require('./config/db');
@@ -15,13 +14,14 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5173',
   process.env.FRONTEND_URL
-];
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.error('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -53,34 +53,12 @@ app.get('/api/db-test', (req, res) => {
   });
 });
 
-app.get(async (req, res) => {
-  const username = 'admin';
-  const password = 'admin123';
-
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    db.query(
-      'UPDATE admins SET password_hash = ? WHERE username = ?',
-      [hashedPassword, username],
-      (err, result) => {
-        if (err) {
-          console.error('UPDATE ADMIN ERROR:', err);
-          return res.status(500).json({ error: err.message });
-        }
-
-        res.json({
-          message: 'Admin password reset successfully',
-          username,
-          password,
-          affectedRows: result.affectedRows
-        });
-      }
-    );
-  } catch (error) {
-    console.error('BCRYPT ERROR:', error);
-    res.status(500).json({ error: error.message });
-  }
+// 404 FALLBACK
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Route not found',
+    path: req.originalUrl
+  });
 });
 
 const PORT = process.env.PORT || 5000;
