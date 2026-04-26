@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-require('./config/db');
+const db = require('./config/db');
 
 const verifyToken = require('./middleware/authMiddleware');
 
