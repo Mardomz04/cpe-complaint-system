@@ -53,8 +53,7 @@ app.get('/api/db-test', (req, res) => {
   });
 });
 
-// 🔥 TEMP RESET ADMIN PASSWORD (SAFE)
-app.get('/api/create-admin-temp', async (req, res) => {
+app.get(async (req, res) => {
   const username = 'admin';
   const password = 'admin123';
 
