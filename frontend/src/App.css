@@ -758,3 +758,8 @@ tbody tr:hover {
   margin-bottom: 8px;
   font-size: 13px;
 }
+
+.delete-btn {
+  background: #991b1b;
+  color: white;
+}
