@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 const bcrypt = require('bcrypt');
 const db = require('./config/db');
 
@@ -26,7 +25,6 @@ const createAdmin = async () => {
   });
 };
 
-=======
 const bcrypt = require('bcrypt');
 const db = require('./config/db');
 
@@ -53,6 +51,4 @@ const createAdmin = async () => {
     process.exit();
   });
 };
-
->>>>>>> 51647ce9afc43e3b298509a28c0b9efd31c06b5b
 createAdmin();
