@@ -238,24 +238,48 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
 // =======================================
 // STATS PER INSTRUCTOR (NO CATEGORY/SEVERITY NOW)
 // =======================================
+// PROTECTED: GET STATS PER INSTRUCTOR
 router.get('/stats/:instructor_id', verifyToken, (req, res) => {
   const { instructor_id } = req.params;
 
-  const totalSql = `
-    SELECT COUNT(*) AS total
+  const categorySql = `
+    SELECT ai_category AS category, COUNT(*) AS count
     FROM complaints
     WHERE instructor_id = ?
+    GROUP BY ai_category
   `;
 
-  db.query(totalSql, [instructor_id], (err, totalResult) => {
+  db.query(categorySql, [instructor_id], (err, categoryResults) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    res.json({
-      total: totalResult[0].total || 0
+    const severitySql = `
+      SELECT severity_level, COUNT(*) AS count
+      FROM complaints
+      WHERE instructor_id = ?
+      GROUP BY severity_level
+    `;
+
+    db.query(severitySql, [instructor_id], (err, severityResults) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      const totalSql = `
+        SELECT COUNT(*) AS total
+        FROM complaints
+        WHERE instructor_id = ?
+      `;
+
+      db.query(totalSql, [instructor_id], (err, totalResult) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        res.json({
+          total: totalResult[0].total || 0,
+          categories: categoryResults || [],
+          severity: severityResults || []
+        });
+      });
     });
   });
 });
-
 // =======================================
 // LATEST NOTIFICATION
 // =======================================
