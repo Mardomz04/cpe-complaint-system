@@ -1192,3 +1192,50 @@ body.light-mode .analytics-box {
   color: #111827 !important;
   border: 1px solid #e2e8f0 !important;
 }
+
+/* ===== LOGIN PAGE READABILITY FIX ===== */
+
+.login-container,
+.login-card,
+.auth-card {
+  background: #020617 !important;
+  color: #f8fafc !important;
+}
+
+.login-container h1,
+.login-container h2,
+.login-card h1,
+.login-card h2,
+.auth-card h1,
+.auth-card h2 {
+  color: #f8fafc !important;
+}
+
+.login-container label,
+.login-card label,
+.auth-card label {
+  color: #f8fafc !important;
+}
+
+body.light-mode .login-container,
+body.light-mode .login-card,
+body.light-mode .auth-card {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+body.light-mode .login-container h1,
+body.light-mode .login-container h2,
+body.light-mode .login-card h1,
+body.light-mode .login-card h2,
+body.light-mode .auth-card h1,
+body.light-mode .auth-card h2 {
+  color: #111827 !important;
+}
+
+body.light-mode .login-container label,
+body.light-mode .login-card label,
+body.light-mode .auth-card label {
+  color: #111827 !important;
+}
