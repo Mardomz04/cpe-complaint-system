@@ -5,6 +5,8 @@ import api from '../api';
 
 function ComplaintList() {
   const [complaints, setComplaints] = useState([]);
+  const [selectedComplaints, setSelectedComplaints] = useState([]);
+  const [bulkStatus, setBulkStatus] = useState('Pending');
   const [toast, setToast] = useState('');
 
   const [statusFilter, setStatusFilter] = useState('All');
@@ -29,36 +31,6 @@ function ComplaintList() {
     setTimeout(() => setToast(''), 2500);
   };
 
-  const updateStatus = (complaintId, newStatus) => {
-    api.put(`/complaints/${complaintId}/status`, { status: newStatus })
-      .then(() => {
-        fetchComplaints();
-        showToast(`Complaint status updated to ${newStatus}.`);
-      })
-      .catch(err => {
-        console.error(err);
-        showToast('Failed to update complaint status.');
-      });
-  };
-
-  const deleteComplaint = (complaintId) => {
-    const confirmDelete = window.confirm(
-      'Are you sure you want to delete this complaint response? This action cannot be undone.'
-    );
-
-    if (!confirmDelete) return;
-
-    api.delete(`/complaints/${complaintId}`)
-      .then(() => {
-        fetchComplaints();
-        showToast('Complaint response deleted successfully.');
-      })
-      .catch(err => {
-        console.error(err);
-        showToast(err.response?.data?.error || 'Failed to delete complaint response.');
-      });
-  };
-
   const instructors = [...new Set(complaints.map(c => c.instructor_name))];
   const categories = [...new Set(complaints.map(c => c.category))];
 
@@ -74,6 +46,79 @@ function ComplaintList() {
 
     return matchesStatus && matchesInstructor && matchesCategory;
   });
+
+  const filteredComplaintIds = filteredComplaints.map(c => c.complaint_id);
+
+  const toggleSelectComplaint = (complaintId) => {
+    setSelectedComplaints(prev =>
+      prev.includes(complaintId)
+        ? prev.filter(id => id !== complaintId)
+        : [...prev, complaintId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const allSelected =
+      filteredComplaintIds.length > 0 &&
+      filteredComplaintIds.every(id => selectedComplaints.includes(id));
+
+    if (allSelected) {
+      setSelectedComplaints(prev =>
+        prev.filter(id => !filteredComplaintIds.includes(id))
+      );
+    } else {
+      setSelectedComplaints(prev => [
+        ...new Set([...prev, ...filteredComplaintIds])
+      ]);
+    }
+  };
+
+  const handleBulkStatusUpdate = () => {
+    if (selectedComplaints.length === 0) {
+      showToast('Please select at least one complaint.');
+      return;
+    }
+
+    api.put('/complaints/bulk/status', {
+      complaint_ids: selectedComplaints,
+      status: bulkStatus
+    })
+      .then(() => {
+        showToast(`Selected complaints marked as ${bulkStatus}.`);
+        setSelectedComplaints([]);
+        fetchComplaints();
+      })
+      .catch(err => {
+        console.error(err);
+        showToast(err.response?.data?.error || 'Failed to update selected complaints.');
+      });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedComplaints.length === 0) {
+      showToast('Please select at least one complaint.');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${selectedComplaints.length} selected complaint response(s)? This cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    api.post('/complaints/bulk/delete', {
+      complaint_ids: selectedComplaints
+    })
+      .then(() => {
+        showToast('Selected complaint responses deleted successfully.');
+        setSelectedComplaints([]);
+        fetchComplaints();
+      })
+      .catch(err => {
+        console.error(err);
+        showToast(err.response?.data?.error || 'Failed to delete selected complaints.');
+      });
+  };
 
   const countByField = (field) => {
     const counts = {};
@@ -189,6 +234,10 @@ function ComplaintList() {
     };
   };
 
+  const allFilteredSelected =
+    filteredComplaintIds.length > 0 &&
+    filteredComplaintIds.every(id => selectedComplaints.includes(id));
+
   return (
     <div className="card">
       <h2>Complaint Records</h2>
@@ -227,6 +276,42 @@ function ComplaintList() {
         </div>
       </div>
 
+      <div className="bulk-action-row">
+        <div className="bulk-left">
+          <strong>{selectedComplaints.length}</strong> selected
+        </div>
+
+        <div className="bulk-controls">
+          <select
+            value={bulkStatus}
+            onChange={(e) => setBulkStatus(e.target.value)}
+            disabled={selectedComplaints.length === 0}
+          >
+            <option>Pending</option>
+            <option>Resolved</option>
+            <option>Rejected</option>
+          </select>
+
+          <button
+            type="button"
+            className="small-btn resolve-btn"
+            onClick={handleBulkStatusUpdate}
+            disabled={selectedComplaints.length === 0}
+          >
+            Apply Status
+          </button>
+
+          <button
+            type="button"
+            className="small-btn delete-btn"
+            onClick={handleBulkDelete}
+            disabled={selectedComplaints.length === 0}
+          >
+            Delete Selected
+          </button>
+        </div>
+      </div>
+
       <div className="export-row">
         <p className="record-count">
           Showing {filteredComplaints.length} of {complaints.length} complaints
@@ -246,6 +331,14 @@ function ComplaintList() {
         <table>
           <thead>
             <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={toggleSelectAll}
+                  disabled={filteredComplaints.length === 0}
+                />
+              </th>
               <th>Subject</th>
               <th>Instructor</th>
               <th>Category</th>
@@ -253,7 +346,6 @@ function ComplaintList() {
               <th>Message</th>
               <th>Status</th>
               <th>Date</th>
-              <th>Actions</th>
             </tr>
           </thead>
 
@@ -265,6 +357,13 @@ function ComplaintList() {
             ) : (
               filteredComplaints.map((complaint) => (
                 <tr key={complaint.complaint_id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedComplaints.includes(complaint.complaint_id)}
+                      onChange={() => toggleSelectComplaint(complaint.complaint_id)}
+                    />
+                  </td>
                   <td>{complaint.subject_code}</td>
                   <td>{complaint.instructor_name}</td>
                   <td>{complaint.category}</td>
@@ -276,41 +375,6 @@ function ComplaintList() {
                     </span>
                   </td>
                   <td>{new Date(complaint.created_at).toLocaleString()}</td>
-                  <td className="actions-cell">
-                    <div className="action-buttons">
-                      <button
-                        type="button"
-                        className="small-btn pending-btn"
-                        onClick={() => updateStatus(complaint.complaint_id, 'Pending')}
-                      >
-                        Pending
-                      </button>
-
-                      <button
-                        type="button"
-                        className="small-btn resolve-btn"
-                        onClick={() => updateStatus(complaint.complaint_id, 'Resolved')}
-                      >
-                        Resolve
-                      </button>
-
-                      <button
-                        type="button"
-                        className="small-btn reject-btn"
-                        onClick={() => updateStatus(complaint.complaint_id, 'Rejected')}
-                      >
-                        Reject
-                      </button>
-
-                      <button
-                        type="button"
-                        className="small-btn delete-btn"
-                        onClick={() => deleteComplaint(complaint.complaint_id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))
             )}
