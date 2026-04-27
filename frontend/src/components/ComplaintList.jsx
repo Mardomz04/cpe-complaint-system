@@ -434,8 +434,8 @@ function ComplaintList() {
                   <td>{complaint.complaint_message}</td>
                   <td>{complaint.ai_severity_reason || 'No reason'}</td>
                   <td>
-                    <span className={`status ${complaint.status.toLowerCase()}`}>
-                      {complaint.status}
+                    <span className={`status ${(complaint.status || 'Pending').toLowerCase()}`}>
+                      {complaint.status || 'Pending'}
                     </span>
                   </td>
                   <td>{new Date(complaint.created_at).toLocaleString()}</td>
