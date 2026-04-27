@@ -40,6 +40,22 @@ function Stats() {
   const [summary, setSummary] = useState(null);
   const [instructors, setInstructors] = useState([]);
   const [selectedInstructor, setSelectedInstructor] = useState(1);
+  const [isLightMode, setIsLightMode] = useState(
+    document.body.classList.contains('light-mode')
+  );
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsLightMode(document.body.classList.contains('light-mode'));
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   const fetchStats = (instructorId) => {
     api.get(`/complaints/stats/${instructorId}`)
@@ -87,8 +103,11 @@ function Stats() {
     );
   }
 
-  const topCategory = data.categories.length > 0
-    ? data.categories.reduce((prev, curr) =>
+  const categories = data.categories || [];
+  const severity = data.severity || [];
+
+  const topCategory = categories.length > 0
+    ? categories.reduce((prev, curr) =>
         prev.count > curr.count ? prev : curr
       )
     : null;
@@ -99,32 +118,37 @@ function Stats() {
   const complaintHandlingMeaning =
     summary.pending > summary.resolved ? 'delayed resolution' : 'effective handling';
 
+  const chartTextColor = isLightMode ? '#0f172a' : '#ffffff';
+  const chartBorderColor = isLightMode ? '#ffffff' : '#ffffff';
+
   const categoryChart = {
-    labels: data.categories.map(c => c.category),
+    labels: categories.map(c => c.category || 'Uncategorized'),
     datasets: [
       {
         label: 'Complaint Categories',
-        data: data.categories.map(c => c.count),
+        data: categories.map(c => c.count),
         backgroundColor: ['#3b82f6', '#22c55e', '#f97316', '#ef4444', '#a855f7'],
-        borderColor: '#ffffff',
+        borderColor: chartBorderColor,
         borderWidth: 2
       }
     ]
   };
 
   const severityChart = {
-    labels: data.severity.map(s => s.severity_level),
+    labels: severity.map(s => s.severity_level || 'None'),
     datasets: [
       {
         label: 'Severity Levels',
-        data: data.severity.map(s => s.count),
-        backgroundColor: data.severity.map(s => {
-          if (s.severity_level.toLowerCase() === 'high') return '#ef4444';
-          if (s.severity_level.toLowerCase() === 'medium') return '#facc15';
-          if (s.severity_level.toLowerCase() === 'low') return '#22c55e';
+        data: severity.map(s => s.count),
+        backgroundColor: severity.map(s => {
+          const level = (s.severity_level || 'none').toLowerCase();
+
+          if (level === 'high') return '#ef4444';
+          if (level === 'medium') return '#facc15';
+          if (level === 'low') return '#22c55e';
           return '#9ca3af';
         }),
-        borderColor: '#ffffff',
+        borderColor: chartBorderColor,
         borderWidth: 2
       }
     ]
@@ -135,8 +159,19 @@ function Stats() {
     plugins: {
       legend: {
         labels: {
-          color: '#ffffff'
+          color: chartTextColor,
+          font: {
+            size: 13,
+            weight: 'bold'
+          },
+          boxWidth: 38,
+          padding: 14
         }
+      },
+      tooltip: {
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        backgroundColor: '#020617'
       }
     }
   };
