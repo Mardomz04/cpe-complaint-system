@@ -1410,3 +1410,96 @@ body.light-mode .graph-card * {
 body.light-mode .card > div {
   color: #0f172a;
 }
+
+/* ===== FINAL LIGHT MODE OVERRIDE FOR STATS + CHARTS ===== */
+
+/* Restore attractive colored stat boxes */
+body.light-mode .stat-card:nth-child(1),
+body.light-mode .summary-card:nth-child(1) {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #ffffff !important;
+}
+
+body.light-mode .stat-card:nth-child(2),
+body.light-mode .summary-card:nth-child(2) {
+  background: linear-gradient(135deg, #facc15, #ca8a04) !important;
+  color: #ffffff !important;
+}
+
+body.light-mode .stat-card:nth-child(3),
+body.light-mode .summary-card:nth-child(3) {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  color: #ffffff !important;
+}
+
+body.light-mode .stat-card:nth-child(4),
+body.light-mode .summary-card:nth-child(4) {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: #ffffff !important;
+}
+
+body.light-mode .stat-card *,
+body.light-mode .summary-card * {
+  color: #ffffff !important;
+}
+
+/* Fix the dark "Most complaints..." message box */
+body.light-mode .insight-message,
+body.light-mode .insight-box,
+body.light-mode .summary-message,
+body.light-mode .status-insight,
+body.light-mode .card .insight,
+body.light-mode .card p {
+  background: #eaf3ff !important;
+  color: #0f172a !important;
+  border: 1px solid #bfdbfe !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
+}
+
+body.light-mode .insight-message *,
+body.light-mode .insight-box *,
+body.light-mode .summary-message *,
+body.light-mode .status-insight *,
+body.light-mode .card .insight *,
+body.light-mode .card p * {
+  color: #0f172a !important;
+}
+
+/* Fix pie chart boxes */
+body.light-mode .chart-card,
+body.light-mode .chart-container,
+body.light-mode .pie-card,
+body.light-mode .graph-card,
+body.light-mode .charts-grid > div,
+body.light-mode .chart-box {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1) !important;
+}
+
+/* Chart titles/text */
+body.light-mode .chart-card h2,
+body.light-mode .chart-card h3,
+body.light-mode .chart-container h2,
+body.light-mode .chart-container h3,
+body.light-mode .pie-card h2,
+body.light-mode .pie-card h3,
+body.light-mode .graph-card h2,
+body.light-mode .graph-card h3,
+body.light-mode .chart-box h2,
+body.light-mode .chart-box h3,
+body.light-mode .charts-grid h2,
+body.light-mode .charts-grid h3 {
+  color: #0f172a !important;
+}
+
+/* Force chart legends and surrounding labels readable */
+body.light-mode .chart-card *,
+body.light-mode .chart-container *,
+body.light-mode .pie-card *,
+body.light-mode .graph-card *,
+body.light-mode .chart-box *,
+body.light-mode .charts-grid * {
+  color: #0f172a !important;
+}
