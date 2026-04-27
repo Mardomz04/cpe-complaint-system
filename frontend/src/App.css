@@ -880,22 +880,25 @@ tbody tr:hover {
 .severity-high {
   background: #fee2e2 !important;
   border-left: 6px solid #dc2626;
-  animation: highAlertPulse 1.2s infinite alternate;
+  color: #7f1d1d;
 }
 
 .severity-medium {
-  background: #fef3c7 !important;
+  background: #fffbeb !important; /* soft yellow */
   border-left: 6px solid #f59e0b;
+  color: #111827;
 }
 
 .severity-low {
-  background: #ecfdf5 !important;
+  background: #f0fdf4 !important; /* soft green */
   border-left: 6px solid #10b981;
+  color: #111827;
 }
 
 .sentiment-positive {
-  background: #dcfce7 !important;
+  background: #ecfdf5 !important;
   border-left: 6px solid #22c55e;
+  color: #111827;
 }
 
 @keyframes highAlertPulse {
@@ -906,4 +909,12 @@ tbody tr:hover {
   to {
     box-shadow: 0 0 18px rgba(220, 38, 38, 0.45);
   }
+}
+
+table td {
+  color: #111827 !important; /* force readable text */
+}
+
+table th {
+  color: #ffffff; /* keep header white */
 }
