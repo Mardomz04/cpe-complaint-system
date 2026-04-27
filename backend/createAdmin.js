@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -69,6 +70,7 @@ router.post('/login', (req, res) => {
     if (results.length === 0) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
+
 
     const admin = results[0];
 
@@ -99,3 +101,10 @@ router.post('/login', (req, res) => {
 });
 
 module.exports = router;
+    console.log('Admin account created successfully');
+    console.log('Username:', username);
+    console.log('Password:', password);
+    process.exit();
+  });
+
+createAdmin();

@@ -16,7 +16,13 @@ router.get('/', (req, res) => {
   });
 });
 
+
 // ADD instructor
+const express = require('express');
+const router = express.Router();
+const db = require('../config/db');
+
+// Add instructor
 router.post('/', (req, res) => {
   const { instructor_name } = req.body;
 
