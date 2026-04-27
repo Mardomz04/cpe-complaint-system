@@ -46,17 +46,15 @@ function AdminLayout({ children, onLogout }) {
   return (
     <div className="dashboard">
       <AdminNotification />
+      <button
+        type="button"
+        className="theme-toggle-floating"
+        onClick={toggleTheme}
+        >
+          {isLightMode ? '🌙' : '☀️'}
+        </button>
 
       <div className="header">
-        <div className="header-top">
-          <button
-            type="button"
-            className="theme-toggle-btn"
-            onClick={toggleTheme}
-          >
-            {isLightMode ? '🌙 Dark Mode' : '☀️ Light Mode'}
-          </button>
-        </div>
 
         <h1 className="page-title">Instructor Feedback Dashboard</h1>
         <p className="subtitle">Anonymous Feedback Monitoring System</p>
