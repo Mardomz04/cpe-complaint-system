@@ -18,7 +18,6 @@ router.get('/', (req, res) => {
 
 
 // ADD instructor
-const router = express.Router();
 const db = require('../config/db');
 
 // Add instructor
