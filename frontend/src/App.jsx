@@ -7,6 +7,7 @@ import ComplaintList from './components/ComplaintList';
 import QRCodeBox from './components/QRCodeBox';
 import Login from './components/Login';
 import QRRedirect from './components/QRRedirect';
+import AdminNotification from './components/AdminNotification';
 
 import SubjectManager from './SubjectManager';
 import InstructorManager from './InstructorManager';
@@ -16,6 +17,8 @@ import './App.css';
 function AdminLayout({ children, onLogout }) {
   return (
     <div className="dashboard">
+      <AdminNotification />
+
       <div className="header">
         <h1 className="page-title">Instructor Complaint Dashboard</h1>
         <p className="subtitle">Anonymous Complaint Monitoring System</p>
