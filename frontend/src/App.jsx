@@ -15,13 +15,51 @@ import InstructorManager from './InstructorManager';
 import './App.css';
 
 function AdminLayout({ children, onLogout }) {
+  const [isLightMode, setIsLightMode] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+
+    if (savedTheme === 'light') {
+      document.body.classList.add('light-mode');
+      setIsLightMode(true);
+    } else {
+      document.body.classList.remove('light-mode');
+      setIsLightMode(false);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextMode = !isLightMode;
+
+    if (nextMode) {
+      document.body.classList.add('light-mode');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.body.classList.remove('light-mode');
+      localStorage.setItem('theme', 'dark');
+    }
+
+    setIsLightMode(nextMode);
+  };
+
   return (
     <div className="dashboard">
       <AdminNotification />
 
       <div className="header">
+        <div className="header-top">
+          <button
+            type="button"
+            className="theme-toggle-btn"
+            onClick={toggleTheme}
+          >
+            {isLightMode ? '🌙 Dark Mode' : '☀️ Light Mode'}
+          </button>
+        </div>
+
         <h1 className="page-title">Instructor Feedback Dashboard</h1>
-        <p className="subtitle">Anonymous Complaint Monitoring System</p>
+        <p className="subtitle">Anonymous Feedback Monitoring System</p>
       </div>
 
       <nav className="nav-bar">
