@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/authMiddleware');
+const analyzeFeedback = require('../services/aiAnalyzer');
 
 // =======================================
 // PUBLIC: ADD FEEDBACK (NO CATEGORY/SEVERITY)
 // =======================================
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const {
     subject_id,
     instructor_id,
@@ -17,29 +18,46 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const sql = `
-    INSERT INTO complaints 
-    (subject_id, instructor_id, complaint_message)
-    VALUES (?, ?, ?)
-  `;
+  try {
+    // 🔥 AI ANALYSIS
+    const ai = await analyzeFeedback(complaint_message);
 
-  db.query(
-    sql,
-    [subject_id, instructor_id, complaint_message],
-    (err, result) => {
-      if (err) {
-        console.error('Insert error:', err);
-        return res.status(500).json({ error: err.message });
+    const sql = `
+      INSERT INTO complaints 
+      (subject_id, instructor_id, complaint_message, sentiment, ai_category, severity_level, ai_severity_reason)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+      sql,
+      [
+        subject_id,
+        instructor_id,
+        complaint_message,
+        ai.sentiment,
+        ai.category,
+        ai.severity_level,
+        ai.severity_reason
+      ],
+      (err, result) => {
+        if (err) {
+          console.error('Insert error:', err);
+          return res.status(500).json({ error: err.message });
+        }
+
+        res.json({
+          message: 'Feedback submitted with AI analysis',
+          complaint_id: result.insertId,
+          ai_analysis: ai   // optional (good for debugging)
+        });
       }
+    );
 
-      res.json({
-        message: 'Feedback submitted successfully',
-        complaint_id: result.insertId
-      });
-    }
-  );
+  } catch (error) {
+    console.error('Route error:', error);
+    res.status(500).json({ error: 'Server error during AI analysis' });
+  }
 });
-
 // =======================================
 // PROTECTED: GET ALL FEEDBACK
 // =======================================
