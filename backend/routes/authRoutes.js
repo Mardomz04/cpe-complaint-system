@@ -1,4 +1,3 @@
-router.get('/reset-admin-cpe', async (req, res) => {
   try {
     const username = 'CPEadmin';
     const password = 'CPE2026!';
