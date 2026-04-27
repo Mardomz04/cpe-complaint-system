@@ -12,7 +12,7 @@ router.get('/reset-admin-cpe', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     db.query(
-      'UPDATE admins SET username = ?, password_hash = ? WHERE admin_id = 1',
+      'UPDATE admins SET username = ?, password_hash = ? WHERE admin_id = 9',
       [username, hashedPassword],
       (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
