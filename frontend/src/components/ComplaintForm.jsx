@@ -11,8 +11,6 @@ function ComplaintForm() {
   const [form, setForm] = useState({
     subject_id: '',
     instructor_id: '',
-    category: '',
-    severity_level: '',
     complaint_message: ''
   });
 
@@ -39,9 +37,7 @@ function ComplaintForm() {
     if (
       !form.subject_id ||
       !form.instructor_id ||
-      !form.category ||
-      !form.severity_level ||
-      !form.complaint_message
+      !form.complaint_message.trim()
     ) {
       setMessage('Please fill in all fields.');
       return;
@@ -56,14 +52,12 @@ function ComplaintForm() {
         setForm({
           subject_id: '',
           instructor_id: '',
-          category: '',
-          severity_level: '',
           complaint_message: ''
         });
       })
       .catch(err => {
         console.error('Submit error:', err);
-        setMessage('Error submitting complaint.');
+        setMessage('Error submitting feedback.');
       })
       .finally(() => {
         setLoading(false);
@@ -73,11 +67,11 @@ function ComplaintForm() {
   if (submitted) {
     return (
       <div className="form-container success-container">
-        <h1>Complaint Submitted</h1>
-        <p>Your complaint has been recorded anonymously.</p>
+        <h1>Feedback Submitted</h1>
+        <p>Your feedback has been recorded anonymously.</p>
 
         <button type="button" onClick={() => setSubmitted(false)}>
-          Submit Another Complaint
+          Submit Another Feedback
         </button>
       </div>
     );
@@ -85,7 +79,7 @@ function ComplaintForm() {
 
   return (
     <div className="form-container">
-      <h1>Submit Complaint</h1>
+      <h1>Submit Feedback</h1>
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
@@ -121,47 +115,17 @@ function ComplaintForm() {
         </div>
 
         <div className="form-group">
-          <label>Category</label>
-          <select
-            name="category"
-            value={form.category}
-            onChange={handleChange}
-          >
-            <option value="">Select Category</option>
-            <option>Teaching Method</option>
-            <option>Grading Concern</option>
-            <option>Attendance</option>
-            <option>Behavior</option>
-            <option>Communication</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Severity Level</label>
-          <select
-            name="severity_level"
-            value={form.severity_level}
-            onChange={handleChange}
-          >
-            <option value="">Select Severity</option>
-            <option>Low</option>
-            <option>Medium</option>
-            <option>High</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Complaint</label>
+          <label>Feedback</label>
           <textarea
             name="complaint_message"
             value={form.complaint_message}
             onChange={handleChange}
-            placeholder="Enter your complaint..."
+            placeholder="Enter your feedback..."
           />
         </div>
 
         <button type="submit" disabled={loading}>
-          {loading ? 'Submitting...' : 'Submit Complaint'}
+          {loading ? 'Submitting...' : 'Submit Feedback'}
         </button>
       </form>
 

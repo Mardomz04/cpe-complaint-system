@@ -8,20 +8,18 @@ router.post('/', (req, res) => {
   const {
     subject_id,
     instructor_id,
-    category,
-    severity_level,
     complaint_message
   } = req.body;
 
   const sql = `
     INSERT INTO complaints 
-    (subject_id, instructor_id, category, severity_level, complaint_message)
-    VALUES (?, ?, ?, ?, ?)
+    (subject_id, instructor_id, complaint_message)
+    VALUES (?, ?, ?)
   `;
 
   db.query(
     sql,
-    [subject_id, instructor_id, category, severity_level, complaint_message],
+    [subject_id, instructor_id, complaint_message]
     (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
 
