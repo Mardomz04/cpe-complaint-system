@@ -16,11 +16,7 @@ router.get('/', (req, res) => {
   });
 });
 
-
 // ADD instructor
-const db = require('../config/db');
-
-// Add instructor
 router.post('/', (req, res) => {
   const { instructor_name } = req.body;
 
@@ -64,7 +60,7 @@ router.delete('/:instructor_id', (req, res) => {
 
     if (checkResult[0].complaintCount > 0) {
       return res.status(400).json({
-        error: 'Cannot delete this instructor because they are already used in complaints.'
+        error: 'Cannot delete this instructor because they are already used in feedback records.'
       });
     }
 
