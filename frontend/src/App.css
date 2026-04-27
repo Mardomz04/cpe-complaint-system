@@ -763,3 +763,40 @@ tbody tr:hover {
   background: #991b1b;
   color: white;
 }
+
+.bulk-action-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  background: #020617;
+  border: 1px solid #334155;
+  padding: 14px;
+  border-radius: 14px;
+}
+
+.bulk-left {
+  color: #cbd5e1;
+}
+
+.bulk-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.bulk-controls select {
+  width: 160px;
+}
+
+.bulk-controls button {
+  width: auto;
+}
+
+.delete-btn {
+  background: #991b1b;
+  color: white;
+}
