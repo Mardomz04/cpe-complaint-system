@@ -800,3 +800,63 @@ tbody tr:hover {
   background: #991b1b;
   color: white;
 }
+
+.sound-note {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.admin-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 340px;
+  padding: 18px;
+  border-radius: 12px;
+  z-index: 9999;
+  color: white;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+  animation: slideIn 0.3s ease-out;
+}
+
+.admin-notification.normal {
+  background: #2563eb;
+}
+
+.admin-notification.severe {
+  background: #dc2626;
+  border: 3px solid #991b1b;
+  animation: severePulse 0.8s infinite alternate;
+}
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  border: none;
+  background: transparent;
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes severePulse {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.03);
+  }
+}
