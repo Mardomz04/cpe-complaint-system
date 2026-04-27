@@ -20,7 +20,7 @@ function AdminLayout({ children, onLogout }) {
       <AdminNotification />
 
       <div className="header">
-        <h1 className="page-title">Instructor Complaint Dashboard</h1>
+        <h1 className="page-title">Instructor Feedback Dashboard</h1>
         <p className="subtitle">Anonymous Complaint Monitoring System</p>
       </div>
 
