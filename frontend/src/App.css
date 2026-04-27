@@ -918,3 +918,90 @@ table td {
 table th {
   color: #ffffff; /* keep header white */
 }
+
+/* ===== DARK-FRIENDLY AI TABLE COLORS ===== */
+
+.table-wrapper table {
+  background: #0f172a;
+  border-collapse: collapse;
+}
+
+.table-wrapper table th {
+  background: #334155;
+  color: #ffffff !important;
+}
+
+.table-wrapper table td {
+  color: #e5e7eb !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+/* Severity rows - dark mode friendly */
+.severity-high {
+  background: rgba(127, 29, 29, 0.45) !important;
+  border-left: 6px solid #ef4444;
+  color: #fef2f2 !important;
+  animation: highAlertPulse 1.2s infinite alternate;
+}
+
+.severity-medium {
+  background: rgba(120, 53, 15, 0.45) !important;
+  border-left: 6px solid #f59e0b;
+  color: #fff7ed !important;
+}
+
+.severity-low {
+  background: rgba(20, 83, 45, 0.45) !important;
+  border-left: 6px solid #22c55e;
+  color: #ecfdf5 !important;
+}
+
+.sentiment-positive {
+  background: rgba(22, 101, 52, 0.45) !important;
+  border-left: 6px solid #22c55e;
+  color: #ecfdf5 !important;
+}
+
+/* Force row text readable */
+.severity-high td,
+.severity-medium td,
+.severity-low td,
+.sentiment-positive td {
+  color: #f8fafc !important;
+}
+
+/* Hover effect */
+.table-wrapper table tbody tr:hover {
+  filter: brightness(1.15);
+}
+
+/* Severity badges */
+.severity-badge.high {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.severity-badge.medium {
+  background: #f59e0b;
+  color: #111827;
+}
+
+.severity-badge.low {
+  background: #22c55e;
+  color: #052e16;
+}
+
+.severity-badge.none {
+  background: #64748b;
+  color: #ffffff;
+}
+
+@keyframes highAlertPulse {
+  from {
+    box-shadow: inset 0 0 0 rgba(239, 68, 68, 0);
+  }
+
+  to {
+    box-shadow: inset 0 0 18px rgba(239, 68, 68, 0.35);
+  }
+}
