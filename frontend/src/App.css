@@ -812,12 +812,14 @@ tbody tr:hover {
   top: 20px;
   right: 20px;
   width: 340px;
-  padding: 18px;
+  padding: 20px;
   border-radius: 12px;
   z-index: 9999;
   color: white;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
   animation: slideIn 0.3s ease-out;
+
+  position: relative; /* 👈 IMPORTANT */
 }
 
 .admin-notification.normal {
@@ -832,13 +834,29 @@ tbody tr:hover {
 
 .close-btn {
   position: absolute;
-  top: 8px;
+  top: 10px;
   right: 12px;
   border: none;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.2);
   color: white;
-  font-size: 22px;
+  font-size: 18px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.admin-notification h3 {
+  margin-top: 0;
+  padding-right: 35px; /* space for X button */
 }
 
 @keyframes slideIn {
