@@ -818,8 +818,6 @@ tbody tr:hover {
   color: white;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
   animation: slideIn 0.3s ease-out;
-
-  position: relative; /* 👈 IMPORTANT */
 }
 
 .admin-notification.normal {
