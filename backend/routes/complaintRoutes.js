@@ -5,84 +5,111 @@ const verifyToken = require('../middleware/authMiddleware');
 const analyzeFeedback = require('../services/aiAnalyzer');
 
 // =======================================
-// PUBLIC: ADD FEEDBACK (NO CATEGORY/SEVERITY)
+// PUBLIC: ADD FEEDBACK WITH AI ANALYSIS
 // =======================================
 router.post('/', async (req, res) => {
-  const {
-    subject_id,
-    instructor_id,
-    complaint_message
-  } = req.body;
+  const { subject_id, instructor_id, complaint_message } = req.body;
 
-  if (!subject_id || !instructor_id || !complaint_message) {
+  if (!subject_id || !instructor_id || !complaint_message || !complaint_message.trim()) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  let ai = {
+    sentiment: 'Neutral',
+    category: 'Uncategorized',
+    severity_level: 'None',
+    severity_reason: 'AI analysis was not completed.'
+  };
+
   try {
-    // 🔥 AI ANALYSIS
-    const ai = await analyzeFeedback(complaint_message);
-
-    const sql = `
-      INSERT INTO complaints 
-      (subject_id, instructor_id, complaint_message, sentiment, ai_category, severity_level, ai_severity_reason)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    db.query(
-      sql,
-      [
-        subject_id,
-        instructor_id,
-        complaint_message,
-        ai.sentiment,
-        ai.category,
-        ai.severity_level,
-        ai.severity_reason
-      ],
-      (err, result) => {
-        if (err) {
-          console.error('Insert error:', err);
-          return res.status(500).json({ error: err.message });
-        }
-
-        res.json({
-          message: 'Feedback submitted with AI analysis',
-          complaint_id: result.insertId,
-          ai_analysis: ai   // optional (good for debugging)
-        });
-      }
-    );
-
+    ai = await analyzeFeedback(complaint_message);
   } catch (error) {
-    console.error('Route error:', error);
-    res.status(500).json({ error: 'Server error during AI analysis' });
+    console.error('AI analysis failed, using fallback:', error);
   }
+
+  const safeSentiment = ai.sentiment || 'Neutral';
+  const safeCategory = ai.category || 'Uncategorized';
+  let safeSeverity = ai.severity_level || 'None';
+  const safeReason = ai.severity_reason || 'No reason provided.';
+
+  if (safeSentiment === 'Positive') {
+    safeSeverity = 'None';
+  }
+
+  const sql = `
+    INSERT INTO complaints 
+    (
+      subject_id,
+      instructor_id,
+      complaint_message,
+      sentiment,
+      ai_category,
+      severity_level,
+      ai_severity_reason
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(
+    sql,
+    [
+      subject_id,
+      instructor_id,
+      complaint_message.trim(),
+      safeSentiment,
+      safeCategory,
+      safeSeverity,
+      safeReason
+    ],
+    (err, result) => {
+      if (err) {
+        console.error('Insert error:', err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      res.json({
+        message: 'Feedback submitted with AI analysis',
+        complaint_id: result.insertId,
+        ai_analysis: {
+          sentiment: safeSentiment,
+          category: safeCategory,
+          severity_level: safeSeverity,
+          severity_reason: safeReason
+        }
+      });
+    }
+  );
 });
+
 // =======================================
 // PROTECTED: GET ALL FEEDBACK
 // =======================================
 router.get('/', verifyToken, (req, res) => {
   const sql = `
-  SELECT 
-    complaints.complaint_id,
-    subjects.subject_code,
-    subjects.subject_description,
-    instructors.instructor_name,
-    complaints.complaint_message,
-    complaints.sentiment,
-    complaints.ai_category,
-    complaints.severity_level,
-    complaints.ai_severity_reason,
-    complaints.status,
-    complaints.created_at
-  FROM complaints
-  JOIN subjects ON complaints.subject_id = subjects.subject_id
-  JOIN instructors ON complaints.instructor_id = instructors.instructor_id
-  ORDER BY complaints.created_at DESC
-`;
+    SELECT 
+      complaints.complaint_id,
+      subjects.subject_code,
+      subjects.subject_description,
+      instructors.instructor_name,
+      complaints.complaint_message,
+      complaints.sentiment,
+      complaints.ai_category,
+      complaints.severity_level,
+      complaints.ai_severity_reason,
+      complaints.status,
+      complaints.created_at
+    FROM complaints
+    JOIN subjects ON complaints.subject_id = subjects.subject_id
+    JOIN instructors ON complaints.instructor_id = instructors.instructor_id
+    ORDER BY complaints.created_at DESC
+  `;
 
   db.query(sql, (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('Get feedback error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+
     res.json(results);
   });
 });
@@ -110,7 +137,10 @@ router.put('/bulk/status', verifyToken, (req, res) => {
   `;
 
   db.query(sql, [status, complaint_ids], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('Bulk status update error:', err);
+      return res.status(500).json({ error: err.message });
+    }
 
     res.json({
       message: 'Selected feedback updated successfully',
@@ -135,7 +165,10 @@ router.post('/bulk/delete', verifyToken, (req, res) => {
   `;
 
   db.query(sql, [complaint_ids], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('Bulk delete error:', err);
+      return res.status(500).json({ error: err.message });
+    }
 
     res.json({
       message: 'Selected feedback deleted successfully',
@@ -164,7 +197,10 @@ router.put('/:complaint_id/status', verifyToken, (req, res) => {
   `;
 
   db.query(sql, [status, complaint_id], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('Status update error:', err);
+      return res.status(500).json({ error: err.message });
+    }
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Feedback not found' });
@@ -186,7 +222,10 @@ router.delete('/:complaint_id', verifyToken, (req, res) => {
   `;
 
   db.query(sql, [complaint_id], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('Delete feedback error:', err);
+      return res.status(500).json({ error: err.message });
+    }
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Feedback not found' });
@@ -210,7 +249,10 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
   `;
 
   db.query(totalSql, (err, totalResult) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('Analytics total error:', err);
+      return res.status(500).json({ error: err.message });
+    }
 
     const topInstructorSql = `
       SELECT instructors.instructor_name, COUNT(*) AS count
@@ -222,45 +264,75 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
     `;
 
     db.query(topInstructorSql, (err, instructorResult) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) {
+        console.error('Analytics instructor error:', err);
+        return res.status(500).json({ error: err.message });
+      }
 
-      res.json({
-        total: totalResult[0].total || 0,
-        pending: totalResult[0].pending || 0,
-        resolved: totalResult[0].resolved || 0,
-        rejected: totalResult[0].rejected || 0,
-        topInstructor: instructorResult[0] || null
+      const topCategorySql = `
+        SELECT 
+          COALESCE(ai_category, 'Uncategorized') AS category,
+          COUNT(*) AS count
+        FROM complaints
+        GROUP BY COALESCE(ai_category, 'Uncategorized')
+        ORDER BY count DESC
+        LIMIT 1
+      `;
+
+      db.query(topCategorySql, (err, categoryResult) => {
+        if (err) {
+          console.error('Analytics category error:', err);
+          return res.status(500).json({ error: err.message });
+        }
+
+        res.json({
+          total: totalResult[0].total || 0,
+          pending: totalResult[0].pending || 0,
+          resolved: totalResult[0].resolved || 0,
+          rejected: totalResult[0].rejected || 0,
+          topInstructor: instructorResult[0] || null,
+          topCategory: categoryResult[0] || null
+        });
       });
     });
   });
 });
 
 // =======================================
-// STATS PER INSTRUCTOR (NO CATEGORY/SEVERITY NOW)
-// =======================================
 // PROTECTED: GET STATS PER INSTRUCTOR
+// =======================================
 router.get('/stats/:instructor_id', verifyToken, (req, res) => {
   const { instructor_id } = req.params;
 
   const categorySql = `
-    SELECT ai_category AS category, COUNT(*) AS count
+    SELECT 
+      COALESCE(ai_category, 'Uncategorized') AS category,
+      COUNT(*) AS count
     FROM complaints
     WHERE instructor_id = ?
-    GROUP BY ai_category
+    GROUP BY COALESCE(ai_category, 'Uncategorized')
   `;
 
   db.query(categorySql, [instructor_id], (err, categoryResults) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('Stats category error:', err);
+      return res.status(500).json({ error: err.message });
+    }
 
     const severitySql = `
-      SELECT severity_level, COUNT(*) AS count
+      SELECT 
+        COALESCE(severity_level, 'None') AS severity_level,
+        COUNT(*) AS count
       FROM complaints
       WHERE instructor_id = ?
-      GROUP BY severity_level
+      GROUP BY COALESCE(severity_level, 'None')
     `;
 
     db.query(severitySql, [instructor_id], (err, severityResults) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) {
+        console.error('Stats severity error:', err);
+        return res.status(500).json({ error: err.message });
+      }
 
       const totalSql = `
         SELECT COUNT(*) AS total
@@ -269,7 +341,10 @@ router.get('/stats/:instructor_id', verifyToken, (req, res) => {
       `;
 
       db.query(totalSql, [instructor_id], (err, totalResult) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+          console.error('Stats total error:', err);
+          return res.status(500).json({ error: err.message });
+        }
 
         res.json({
           total: totalResult[0].total || 0,
@@ -280,6 +355,7 @@ router.get('/stats/:instructor_id', verifyToken, (req, res) => {
     });
   });
 });
+
 // =======================================
 // LATEST NOTIFICATION
 // =======================================
@@ -290,6 +366,10 @@ router.get('/notifications/latest', (req, res) => {
       subjects.subject_code,
       instructors.instructor_name,
       complaints.complaint_message,
+      complaints.sentiment,
+      complaints.ai_category,
+      complaints.severity_level,
+      complaints.ai_severity_reason,
       complaints.created_at
     FROM complaints
     JOIN subjects ON complaints.subject_id = subjects.subject_id
@@ -307,7 +387,17 @@ router.get('/notifications/latest', (req, res) => {
     const latest = result[0];
     if (!latest) return res.json(null);
 
-    res.json(latest);
+    res.json({
+      complaint_id: latest.complaint_id,
+      subject_code: latest.subject_code,
+      instructor_name: latest.instructor_name,
+      complaint_text: latest.complaint_message,
+      sentiment: latest.sentiment || 'Neutral',
+      category: latest.ai_category || 'Uncategorized',
+      severity: latest.severity_level || 'None',
+      severity_reason: latest.ai_severity_reason || 'No reason provided.',
+      created_at: latest.created_at
+    });
   });
 });
 
