@@ -1347,3 +1347,66 @@ body.light-mode .severity-low td,
 body.light-mode .sentiment-positive td {
   color: #0f172a !important;
 }
+
+/* ===== LIGHT MODE FIX FOR INSIGHT + CHART AREAS ===== */
+
+/* Keep the attractive total/pending/resolved/rejected cards untouched */
+body.light-mode .stat-card,
+body.light-mode .total-card,
+body.light-mode .pending-card,
+body.light-mode .resolved-card,
+body.light-mode .rejected-card {
+  color: #ffffff !important;
+}
+
+/* Fix "Most complaints..." box */
+body.light-mode .insight-message,
+body.light-mode .insight-text,
+body.light-mode .summary-message {
+  background: #eef6ff !important;
+  color: #0f172a !important;
+  border: 1px solid #bfdbfe !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
+}
+
+body.light-mode .insight-message *,
+body.light-mode .insight-text *,
+body.light-mode .summary-message * {
+  color: #0f172a !important;
+}
+
+/* Fix chart cards / pie chart containers */
+body.light-mode .chart-card,
+body.light-mode .chart-container,
+body.light-mode .pie-card,
+body.light-mode .graph-card {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #dbe3ef !important;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Fix chart titles */
+body.light-mode .chart-card h2,
+body.light-mode .chart-card h3,
+body.light-mode .chart-container h2,
+body.light-mode .chart-container h3,
+body.light-mode .pie-card h2,
+body.light-mode .pie-card h3,
+body.light-mode .graph-card h2,
+body.light-mode .graph-card h3 {
+  color: #0f172a !important;
+}
+
+/* Fix chart legend/text if affected by CSS */
+body.light-mode .chart-card *,
+body.light-mode .chart-container *,
+body.light-mode .pie-card *,
+body.light-mode .graph-card * {
+  color: #0f172a !important;
+}
+
+/* If the chart boxes are plain divs inside card */
+body.light-mode .card > div {
+  color: #0f172a;
+}
