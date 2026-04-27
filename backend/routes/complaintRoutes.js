@@ -58,7 +58,7 @@ router.get('/', verifyToken, (req, res) => {
   });
 });
 
-// PROTECTED: UPDATE STATUS
+// PROTECTED: UPDATE ONE STATUS
 router.put('/:complaint_id/status', verifyToken, (req, res) => {
   const { complaint_id } = req.params;
   const { status } = req.body;
@@ -86,7 +86,37 @@ router.put('/:complaint_id/status', verifyToken, (req, res) => {
   });
 });
 
-// PROTECTED: DELETE COMPLAINT
+// PROTECTED: BULK UPDATE STATUS
+router.put('/bulk/status', verifyToken, (req, res) => {
+  const { complaint_ids, status } = req.body;
+
+  const allowedStatuses = ['Pending', 'Resolved', 'Rejected'];
+
+  if (!Array.isArray(complaint_ids) || complaint_ids.length === 0) {
+    return res.status(400).json({ error: 'Please select at least one complaint.' });
+  }
+
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status value' });
+  }
+
+  const sql = `
+    UPDATE complaints
+    SET status = ?
+    WHERE complaint_id IN (?)
+  `;
+
+  db.query(sql, [status, complaint_ids], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    res.json({
+      message: 'Selected complaints updated successfully',
+      affectedRows: result.affectedRows
+    });
+  });
+});
+
+// PROTECTED: DELETE ONE COMPLAINT
 router.delete('/:complaint_id', verifyToken, (req, res) => {
   const { complaint_id } = req.params;
 
@@ -103,6 +133,29 @@ router.delete('/:complaint_id', verifyToken, (req, res) => {
     }
 
     res.json({ message: 'Complaint deleted successfully' });
+  });
+});
+
+// PROTECTED: BULK DELETE COMPLAINTS
+router.post('/bulk/delete', verifyToken, (req, res) => {
+  const { complaint_ids } = req.body;
+
+  if (!Array.isArray(complaint_ids) || complaint_ids.length === 0) {
+    return res.status(400).json({ error: 'Please select at least one complaint.' });
+  }
+
+  const sql = `
+    DELETE FROM complaints
+    WHERE complaint_id IN (?)
+  `;
+
+  db.query(sql, [complaint_ids], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    res.json({
+      message: 'Selected complaints deleted successfully',
+      affectedRows: result.affectedRows
+    });
   });
 });
 
