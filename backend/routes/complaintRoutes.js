@@ -63,19 +63,23 @@ router.post('/', async (req, res) => {
 // =======================================
 router.get('/', verifyToken, (req, res) => {
   const sql = `
-    SELECT 
-      complaints.complaint_id,
-      subjects.subject_code,
-      subjects.subject_description,
-      instructors.instructor_name,
-      complaints.complaint_message,
-      complaints.status,
-      complaints.created_at
-    FROM complaints
-    JOIN subjects ON complaints.subject_id = subjects.subject_id
-    JOIN instructors ON complaints.instructor_id = instructors.instructor_id
-    ORDER BY complaints.created_at DESC
-  `;
+  SELECT 
+    complaints.complaint_id,
+    subjects.subject_code,
+    subjects.subject_description,
+    instructors.instructor_name,
+    complaints.complaint_message,
+    complaints.sentiment,
+    complaints.ai_category,
+    complaints.severity_level,
+    complaints.ai_severity_reason,
+    complaints.status,
+    complaints.created_at
+  FROM complaints
+  JOIN subjects ON complaints.subject_id = subjects.subject_id
+  JOIN instructors ON complaints.instructor_id = instructors.instructor_id
+  ORDER BY complaints.created_at DESC
+`;
 
   db.query(sql, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
