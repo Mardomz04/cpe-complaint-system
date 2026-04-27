@@ -3,13 +3,19 @@ const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/authMiddleware');
 
-// PUBLIC: ADD COMPLAINT
+// =======================================
+// PUBLIC: ADD FEEDBACK (NO CATEGORY/SEVERITY)
+// =======================================
 router.post('/', (req, res) => {
   const {
     subject_id,
     instructor_id,
     complaint_message
   } = req.body;
+
+  if (!subject_id || !instructor_id || !complaint_message) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
 
   const sql = `
     INSERT INTO complaints 
@@ -19,19 +25,24 @@ router.post('/', (req, res) => {
 
   db.query(
     sql,
-    [subject_id, instructor_id, complaint_message]
+    [subject_id, instructor_id, complaint_message],
     (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) {
+        console.error('Insert error:', err);
+        return res.status(500).json({ error: err.message });
+      }
 
       res.json({
-        message: 'Complaint submitted successfully',
+        message: 'Feedback submitted successfully',
         complaint_id: result.insertId
       });
     }
   );
 });
 
-// PROTECTED: GET ALL COMPLAINTS
+// =======================================
+// PROTECTED: GET ALL FEEDBACK
+// =======================================
 router.get('/', verifyToken, (req, res) => {
   const sql = `
     SELECT 
@@ -39,8 +50,6 @@ router.get('/', verifyToken, (req, res) => {
       subjects.subject_code,
       subjects.subject_description,
       instructors.instructor_name,
-      complaints.category,
-      complaints.severity_level,
       complaints.complaint_message,
       complaints.status,
       complaints.created_at
@@ -56,13 +65,16 @@ router.get('/', verifyToken, (req, res) => {
   });
 });
 
+// =======================================
+// BULK STATUS UPDATE
+// =======================================
 router.put('/bulk/status', verifyToken, (req, res) => {
   const { complaint_ids, status } = req.body;
 
   const allowedStatuses = ['Pending', 'Resolved', 'Rejected'];
 
   if (!Array.isArray(complaint_ids) || complaint_ids.length === 0) {
-    return res.status(400).json({ error: 'Please select at least one complaint.' });
+    return res.status(400).json({ error: 'Please select at least one feedback.' });
   }
 
   if (!allowedStatuses.includes(status)) {
@@ -79,17 +91,20 @@ router.put('/bulk/status', verifyToken, (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
 
     res.json({
-      message: 'Selected complaints updated successfully',
+      message: 'Selected feedback updated successfully',
       affectedRows: result.affectedRows
     });
   });
 });
 
+// =======================================
+// BULK DELETE
+// =======================================
 router.post('/bulk/delete', verifyToken, (req, res) => {
   const { complaint_ids } = req.body;
 
   if (!Array.isArray(complaint_ids) || complaint_ids.length === 0) {
-    return res.status(400).json({ error: 'Please select at least one complaint.' });
+    return res.status(400).json({ error: 'Please select at least one feedback.' });
   }
 
   const sql = `
@@ -101,14 +116,15 @@ router.post('/bulk/delete', verifyToken, (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
 
     res.json({
-      message: 'Selected complaints deleted successfully',
+      message: 'Selected feedback deleted successfully',
       affectedRows: result.affectedRows
     });
   });
 });
 
-
-// PROTECTED: UPDATE ONE STATUS
+// =======================================
+// UPDATE ONE STATUS
+// =======================================
 router.put('/:complaint_id/status', verifyToken, (req, res) => {
   const { complaint_id } = req.params;
   const { status } = req.body;
@@ -129,15 +145,16 @@ router.put('/:complaint_id/status', verifyToken, (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Complaint not found' });
+      return res.status(404).json({ error: 'Feedback not found' });
     }
 
-    res.json({ message: 'Complaint status updated successfully' });
+    res.json({ message: 'Feedback status updated successfully' });
   });
 });
 
-
-// PROTECTED: DELETE ONE COMPLAINT
+// =======================================
+// DELETE ONE
+// =======================================
 router.delete('/:complaint_id', verifyToken, (req, res) => {
   const { complaint_id } = req.params;
 
@@ -150,14 +167,16 @@ router.delete('/:complaint_id', verifyToken, (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Complaint not found' });
+      return res.status(404).json({ error: 'Feedback not found' });
     }
 
-    res.json({ message: 'Complaint deleted successfully' });
+    res.json({ message: 'Feedback deleted successfully' });
   });
 });
 
-// PROTECTED: GET OVERALL ANALYTICS
+// =======================================
+// ANALYTICS SUMMARY
+// =======================================
 router.get('/analytics/summary', verifyToken, (req, res) => {
   const totalSql = `
     SELECT 
@@ -183,80 +202,47 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
     db.query(topInstructorSql, (err, instructorResult) => {
       if (err) return res.status(500).json({ error: err.message });
 
-      const topCategorySql = `
-        SELECT category, COUNT(*) AS count
-        FROM complaints
-        GROUP BY category
-        ORDER BY count DESC
-        LIMIT 1
-      `;
-
-      db.query(topCategorySql, (err, categoryResult) => {
-        if (err) return res.status(500).json({ error: err.message });
-
-        res.json({
-          total: totalResult[0].total || 0,
-          pending: totalResult[0].pending || 0,
-          resolved: totalResult[0].resolved || 0,
-          rejected: totalResult[0].rejected || 0,
-          topInstructor: instructorResult[0] || null,
-          topCategory: categoryResult[0] || null
-        });
+      res.json({
+        total: totalResult[0].total || 0,
+        pending: totalResult[0].pending || 0,
+        resolved: totalResult[0].resolved || 0,
+        rejected: totalResult[0].rejected || 0,
+        topInstructor: instructorResult[0] || null
       });
     });
   });
 });
 
-// PROTECTED: GET STATS PER INSTRUCTOR
+// =======================================
+// STATS PER INSTRUCTOR (NO CATEGORY/SEVERITY NOW)
+// =======================================
 router.get('/stats/:instructor_id', verifyToken, (req, res) => {
   const { instructor_id } = req.params;
 
-  const categorySql = `
-    SELECT category, COUNT(*) AS count
+  const totalSql = `
+    SELECT COUNT(*) AS total
     FROM complaints
     WHERE instructor_id = ?
-    GROUP BY category
   `;
 
-  db.query(categorySql, [instructor_id], (err, categoryResults) => {
+  db.query(totalSql, [instructor_id], (err, totalResult) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    const severitySql = `
-      SELECT severity_level, COUNT(*) AS count
-      FROM complaints
-      WHERE instructor_id = ?
-      GROUP BY severity_level
-    `;
-
-    db.query(severitySql, [instructor_id], (err, severityResults) => {
-      if (err) return res.status(500).json({ error: err.message });
-
-      const totalSql = `
-        SELECT COUNT(*) AS total
-        FROM complaints
-        WHERE instructor_id = ?
-      `;
-
-      db.query(totalSql, [instructor_id], (err, totalResult) => {
-        if (err) return res.status(500).json({ error: err.message });
-
-        res.json({
-          total: totalResult[0].total || 0,
-          categories: categoryResults,
-          severity: severityResults
-        });
-      });
+    res.json({
+      total: totalResult[0].total || 0
     });
   });
 });
 
-router.get("/notifications/latest", (req, res) => {
+// =======================================
+// LATEST NOTIFICATION
+// =======================================
+router.get('/notifications/latest', (req, res) => {
   const sql = `
     SELECT 
       complaints.complaint_id,
       subjects.subject_code,
       instructors.instructor_name,
-      complaints.severity_level,
       complaints.complaint_message,
       complaints.created_at
     FROM complaints
@@ -268,21 +254,14 @@ router.get("/notifications/latest", (req, res) => {
 
   db.query(sql, (err, result) => {
     if (err) {
-      console.error("Notification fetch error:", err);
-      return res.status(500).json({ error: "Failed to fetch notification" });
+      console.error('Notification fetch error:', err);
+      return res.status(500).json({ error: 'Failed to fetch notification' });
     }
 
     const latest = result[0];
     if (!latest) return res.json(null);
 
-    res.json({
-      complaint_id: latest.complaint_id,
-      subject_code: latest.subject_code,
-      instructor_name: latest.instructor_name,
-      severity: latest.severity_level,
-      complaint_text: latest.complaint_message,
-      created_at: latest.created_at
-    });
+    res.json(latest);
   });
 });
 
