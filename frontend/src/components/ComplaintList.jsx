@@ -12,6 +12,8 @@ function ComplaintList() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [instructorFilter, setInstructorFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [sentimentFilter, setSentimentFilter] = useState('All');
+  const [severityFilter, setSeverityFilter] = useState('All');
 
   const fetchComplaints = () => {
     api.get('/complaints')
@@ -31,8 +33,18 @@ function ComplaintList() {
     setTimeout(() => setToast(''), 2500);
   };
 
-  const instructors = [...new Set(complaints.map(c => c.instructor_name))];
-  const categories = [...new Set(complaints.map(c => c.category))];
+  const getRowClass = (complaint) => {
+    if (complaint.severity_level === 'High') return 'severity-high';
+    if (complaint.severity_level === 'Medium') return 'severity-medium';
+    if (complaint.severity_level === 'Low') return 'severity-low';
+    if (complaint.sentiment === 'Positive') return 'sentiment-positive';
+    return '';
+  };
+
+  const instructors = [...new Set(complaints.map(c => c.instructor_name).filter(Boolean))];
+  const categories = [...new Set(complaints.map(c => c.ai_category).filter(Boolean))];
+  const sentiments = [...new Set(complaints.map(c => c.sentiment).filter(Boolean))];
+  const severities = [...new Set(complaints.map(c => c.severity_level).filter(Boolean))];
 
   const filteredComplaints = complaints.filter((complaint) => {
     const matchesStatus =
@@ -42,9 +54,21 @@ function ComplaintList() {
       instructorFilter === 'All' || complaint.instructor_name === instructorFilter;
 
     const matchesCategory =
-      categoryFilter === 'All' || complaint.category === categoryFilter;
+      categoryFilter === 'All' || complaint.ai_category === categoryFilter;
 
-    return matchesStatus && matchesInstructor && matchesCategory;
+    const matchesSentiment =
+      sentimentFilter === 'All' || complaint.sentiment === sentimentFilter;
+
+    const matchesSeverity =
+      severityFilter === 'All' || complaint.severity_level === severityFilter;
+
+    return (
+      matchesStatus &&
+      matchesInstructor &&
+      matchesCategory &&
+      matchesSentiment &&
+      matchesSeverity
+    );
   });
 
   const filteredComplaintIds = filteredComplaints.map(c => c.complaint_id);
@@ -75,7 +99,7 @@ function ComplaintList() {
 
   const handleBulkStatusUpdate = () => {
     if (selectedComplaints.length === 0) {
-      showToast('Please select at least one complaint.');
+      showToast('Please select at least one feedback.');
       return;
     }
 
@@ -84,24 +108,24 @@ function ComplaintList() {
       status: bulkStatus
     })
       .then(() => {
-        showToast(`Selected complaints marked as ${bulkStatus}.`);
+        showToast(`Selected feedback marked as ${bulkStatus}.`);
         setSelectedComplaints([]);
         fetchComplaints();
       })
       .catch(err => {
         console.error(err);
-        showToast(err.response?.data?.error || 'Failed to update selected complaints.');
+        showToast(err.response?.data?.error || 'Failed to update selected feedback.');
       });
   };
 
   const handleBulkDelete = () => {
     if (selectedComplaints.length === 0) {
-      showToast('Please select at least one complaint.');
+      showToast('Please select at least one feedback.');
       return;
     }
 
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete ${selectedComplaints.length} selected complaint response(s)? This cannot be undone.`
+      `Are you sure you want to delete ${selectedComplaints.length} selected feedback response(s)? This cannot be undone.`
     );
 
     if (!confirmDelete) return;
@@ -110,13 +134,13 @@ function ComplaintList() {
       complaint_ids: selectedComplaints
     })
       .then(() => {
-        showToast('Selected complaint responses deleted successfully.');
+        showToast('Selected feedback responses deleted successfully.');
         setSelectedComplaints([]);
         fetchComplaints();
       })
       .catch(err => {
         console.error(err);
-        showToast(err.response?.data?.error || 'Failed to delete selected complaints.');
+        showToast(err.response?.data?.error || 'Failed to delete selected feedback.');
       });
   };
 
@@ -169,14 +193,18 @@ function ComplaintList() {
       doc.addImage(logo, 'PNG', 14, 10, 22, 22);
 
       doc.setFontSize(16);
-      doc.text('CPE Complaint Report', 42, 18);
+      doc.text('CPE Feedback Report', 42, 18);
 
       doc.setFontSize(9);
-      doc.text('Anonymous Complaint Monitoring System', 42, 24);
+      doc.text('Anonymous Feedback Monitoring System', 42, 24);
       doc.text(`Generated: ${new Date().toLocaleString()}`, 42, 30);
 
-      doc.setFontSize(10);
-      doc.text(`Filters: Status = ${statusFilter}, Instructor = ${instructorFilter}, Category = ${categoryFilter}`, 14, 42);
+      doc.setFontSize(9);
+      doc.text(
+        `Filters: Status = ${statusFilter}, Instructor = ${instructorFilter}, Category = ${categoryFilter}, Sentiment = ${sentimentFilter}, Severity = ${severityFilter}`,
+        14,
+        42
+      );
 
       doc.setFontSize(12);
       doc.text('Summary', 14, 54);
@@ -188,29 +216,34 @@ function ComplaintList() {
       doc.text(`Rejected: ${filteredComplaints.filter(c => c.status === 'Rejected').length}`, 155, 62);
 
       let nextY = 76;
-      nextY = drawBarChart(doc, 'Complaints by Category', countByField('category'), nextY);
-      nextY = drawBarChart(doc, 'Complaints by Severity', countByField('severity_level'), nextY + 4);
-      nextY = drawBarChart(doc, 'Complaints by Status', countByField('status'), nextY + 4);
+      nextY = drawBarChart(doc, 'Feedback by AI Category', countByField('ai_category'), nextY);
+      nextY = drawBarChart(doc, 'Feedback by Sentiment', countByField('sentiment'), nextY + 4);
+      nextY = drawBarChart(doc, 'Feedback by Severity', countByField('severity_level'), nextY + 4);
+      nextY = drawBarChart(doc, 'Feedback by Status', countByField('status'), nextY + 4);
 
       autoTable(doc, {
         startY: nextY + 8,
         head: [[
           'Subject',
           'Instructor',
-          'Category',
+          'Sentiment',
+          'AI Category',
           'Severity',
           'Status',
           'Date',
-          'Message'
+          'Message',
+          'AI Reason'
         ]],
         body: filteredComplaints.map(c => [
           c.subject_code,
           c.instructor_name,
-          c.category,
-          c.severity_level,
+          c.sentiment || 'Neutral',
+          c.ai_category || 'Uncategorized',
+          c.severity_level || 'None',
           c.status,
           new Date(c.created_at).toLocaleString(),
-          c.complaint_message
+          c.complaint_message,
+          c.ai_severity_reason || 'No reason'
         ]),
         styles: {
           fontSize: 7,
@@ -225,7 +258,7 @@ function ComplaintList() {
         }
       });
 
-      doc.save('cpe_complaint_report.pdf');
+      doc.save('cpe_feedback_report.pdf');
       showToast('PDF report exported successfully.');
     };
 
@@ -240,7 +273,7 @@ function ComplaintList() {
 
   return (
     <div className="card">
-      <h2>Complaint Records</h2>
+      <h2>Feedback Records</h2>
 
       {toast && <div className="toast">{toast}</div>}
 
@@ -266,11 +299,31 @@ function ComplaintList() {
         </div>
 
         <div className="filter-group">
-          <label>Category</label>
+          <label>AI Category</label>
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
             <option>All</option>
             {categories.map(category => (
               <option key={category}>{category}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Sentiment</label>
+          <select value={sentimentFilter} onChange={(e) => setSentimentFilter(e.target.value)}>
+            <option>All</option>
+            {sentiments.map(sentiment => (
+              <option key={sentiment}>{sentiment}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Severity</label>
+          <select value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)}>
+            <option>All</option>
+            {severities.map(severity => (
+              <option key={severity}>{severity}</option>
             ))}
           </select>
         </div>
@@ -314,7 +367,7 @@ function ComplaintList() {
 
       <div className="export-row">
         <p className="record-count">
-          Showing {filteredComplaints.length} of {complaints.length} complaints
+          Showing {filteredComplaints.length} of {complaints.length} feedback
         </p>
 
         <button
@@ -341,9 +394,11 @@ function ComplaintList() {
               </th>
               <th>Subject</th>
               <th>Instructor</th>
-              <th>Category</th>
+              <th>Sentiment</th>
+              <th>AI Category</th>
               <th>Severity</th>
               <th>Message</th>
+              <th>AI Reason</th>
               <th>Status</th>
               <th>Date</th>
             </tr>
@@ -352,11 +407,14 @@ function ComplaintList() {
           <tbody>
             {filteredComplaints.length === 0 ? (
               <tr>
-                <td colSpan="8">No complaints found. Try adjusting filters or wait for new submissions.</td>
+                <td colSpan="10">No feedback found. Try adjusting filters or wait for new submissions.</td>
               </tr>
             ) : (
               filteredComplaints.map((complaint) => (
-                <tr key={complaint.complaint_id}>
+                <tr
+                  key={complaint.complaint_id}
+                  className={getRowClass(complaint)}
+                >
                   <td>
                     <input
                       type="checkbox"
@@ -366,9 +424,15 @@ function ComplaintList() {
                   </td>
                   <td>{complaint.subject_code}</td>
                   <td>{complaint.instructor_name}</td>
-                  <td>{complaint.category}</td>
-                  <td>{complaint.severity_level}</td>
+                  <td>{complaint.sentiment || 'Neutral'}</td>
+                  <td>{complaint.ai_category || 'Uncategorized'}</td>
+                  <td>
+                    <span className={`severity-badge ${(complaint.severity_level || 'none').toLowerCase()}`}>
+                      {complaint.severity_level || 'None'}
+                    </span>
+                  </td>
                   <td>{complaint.complaint_message}</td>
+                  <td>{complaint.ai_severity_reason || 'No reason'}</td>
                   <td>
                     <span className={`status ${complaint.status.toLowerCase()}`}>
                       {complaint.status}
