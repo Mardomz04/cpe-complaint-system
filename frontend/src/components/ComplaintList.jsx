@@ -5,6 +5,7 @@ import api from '../api';
 
 function ComplaintList() {
   const [complaints, setComplaints] = useState([]);
+  const [patterns, setPatterns] = useState([]);
   const [selectedComplaints, setSelectedComplaints] = useState([]);
   const [bulkStatus, setBulkStatus] = useState('Pending');
   const [toast, setToast] = useState('');
@@ -21,10 +22,21 @@ function ComplaintList() {
       .catch(err => console.error(err));
   };
 
+  const fetchPatterns = () => {
+    api.get('/complaints/analytics/patterns')
+      .then(res => setPatterns(res.data))
+      .catch(err => console.error(err));
+  };
+
   useEffect(() => {
     fetchComplaints();
+    fetchPatterns();
 
-    const interval = setInterval(fetchComplaints, 5000);
+    const interval = setInterval(() => {
+      fetchComplaints();
+      fetchPatterns();
+    }, 5000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -34,11 +46,21 @@ function ComplaintList() {
   };
 
   const getRowClass = (complaint) => {
+    if (complaint.status === 'Urgent') return 'severity-high urgent-row';
     if (complaint.severity_level === 'High') return 'severity-high';
+    if (Number(complaint.ai_confidence || 0) < 0.5) return 'row-low-confidence';
     if (complaint.severity_level === 'Medium') return 'severity-medium';
     if (complaint.severity_level === 'Low') return 'severity-low';
     if (complaint.sentiment === 'Positive') return 'sentiment-positive';
     return '';
+  };
+
+  const getConfidenceClass = (confidence) => {
+    const score = Number(confidence || 0);
+
+    if (score >= 0.8) return 'high';
+    if (score >= 0.5) return 'medium';
+    return 'low';
   };
 
   const instructors = [...new Set(complaints.map(c => c.instructor_name).filter(Boolean))];
@@ -111,6 +133,7 @@ function ComplaintList() {
         showToast(`Selected feedback marked as ${bulkStatus}.`);
         setSelectedComplaints([]);
         fetchComplaints();
+        fetchPatterns();
       })
       .catch(err => {
         console.error(err);
@@ -137,6 +160,7 @@ function ComplaintList() {
         showToast('Selected feedback responses deleted successfully.');
         setSelectedComplaints([]);
         fetchComplaints();
+        fetchPatterns();
       })
       .catch(err => {
         console.error(err);
@@ -189,15 +213,38 @@ function ComplaintList() {
     const logo = new Image();
     logo.src = '/logo.png';
 
-    logo.onload = () => {
-      doc.addImage(logo, 'PNG', 14, 10, 22, 22);
+    const total = filteredComplaints.length || 0;
+    const positive = filteredComplaints.filter(c => c.sentiment === 'Positive').length;
+    const negative = filteredComplaints.filter(c => c.sentiment === 'Negative').length;
+    const neutral = filteredComplaints.filter(c => c.sentiment === 'Neutral').length;
+    const highSeverity = filteredComplaints.filter(c => c.severity_level === 'High').length;
+    const urgent = filteredComplaints.filter(c => c.status === 'Urgent').length;
+
+    const avgConfidence = total > 0
+      ? (
+          filteredComplaints.reduce((sum, c) => sum + Number(c.ai_confidence || 0), 0) / total
+        ).toFixed(2)
+      : '0.00';
+
+    const topCategory = Object.entries(
+      filteredComplaints.reduce((acc, c) => {
+        const key = c.ai_category || 'Uncategorized';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {})
+    ).sort((a, b) => b[1] - a[1])[0];
+
+    const buildPdf = (hasLogo = false) => {
+      if (hasLogo) {
+        doc.addImage(logo, 'PNG', 14, 10, 22, 22);
+      }
 
       doc.setFontSize(16);
-      doc.text('CPE Feedback Report', 42, 18);
+      doc.text('CPE AI Feedback Report', hasLogo ? 42 : 14, 18);
 
       doc.setFontSize(9);
-      doc.text('Anonymous Feedback Monitoring System', 42, 24);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, 42, 30);
+      doc.text('Anonymous Feedback Monitoring System', hasLogo ? 42 : 14, 24);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, hasLogo ? 42 : 14, 30);
 
       doc.setFontSize(9);
       doc.text(
@@ -207,15 +254,19 @@ function ComplaintList() {
       );
 
       doc.setFontSize(12);
-      doc.text('Summary', 14, 54);
+      doc.text('AI Insights Summary', 14, 54);
 
       doc.setFontSize(10);
-      doc.text(`Total Records: ${filteredComplaints.length}`, 14, 62);
-      doc.text(`Pending: ${filteredComplaints.filter(c => c.status === 'Pending').length}`, 60, 62);
-      doc.text(`Resolved: ${filteredComplaints.filter(c => c.status === 'Resolved').length}`, 105, 62);
-      doc.text(`Rejected: ${filteredComplaints.filter(c => c.status === 'Rejected').length}`, 155, 62);
+      doc.text(`Total Records: ${total}`, 14, 62);
+      doc.text(`Positive: ${positive}`, 14, 70);
+      doc.text(`Negative: ${negative}`, 60, 70);
+      doc.text(`Neutral: ${neutral}`, 110, 70);
+      doc.text(`High Severity: ${highSeverity}`, 14, 78);
+      doc.text(`Urgent Cases: ${urgent}`, 60, 78);
+      doc.text(`Avg Confidence: ${(Number(avgConfidence) * 100).toFixed(0)}%`, 110, 78);
+      doc.text(`Top AI Category: ${topCategory ? `${topCategory[0]} (${topCategory[1]})` : 'N/A'}`, 14, 86);
 
-      let nextY = 76;
+      let nextY = 98;
       nextY = drawBarChart(doc, 'Feedback by AI Category', countByField('ai_category'), nextY);
       nextY = drawBarChart(doc, 'Feedback by Sentiment', countByField('sentiment'), nextY + 4);
       nextY = drawBarChart(doc, 'Feedback by Severity', countByField('severity_level'), nextY + 4);
@@ -229,6 +280,7 @@ function ComplaintList() {
           'Sentiment',
           'AI Category',
           'Severity',
+          'Confidence',
           'Status',
           'Date',
           'Message',
@@ -240,7 +292,8 @@ function ComplaintList() {
           c.sentiment || 'Neutral',
           c.ai_category || 'Uncategorized',
           c.severity_level || 'None',
-          c.status,
+          `${(Number(c.ai_confidence || 0) * 100).toFixed(0)}%`,
+          c.status || 'Pending',
           new Date(c.created_at).toLocaleString(),
           c.complaint_message,
           c.ai_severity_reason || 'No reason'
@@ -258,13 +311,12 @@ function ComplaintList() {
         }
       });
 
-      doc.save('cpe_feedback_report.pdf');
-      showToast('PDF report exported successfully.');
+      doc.save('cpe_ai_feedback_report.pdf');
+      showToast('AI PDF report exported successfully.');
     };
 
-    logo.onerror = () => {
-      showToast('Logo not found. Put logo.png inside frontend/public.');
-    };
+    logo.onload = () => buildPdf(true);
+    logo.onerror = () => buildPdf(false);
   };
 
   const allFilteredSelected =
@@ -277,12 +329,25 @@ function ComplaintList() {
 
       {toast && <div className="toast">{toast}</div>}
 
+      {patterns.length > 0 && (
+        <div className="pattern-alert">
+          ⚠️ Smart Pattern Detected: Multiple HIGH severity feedback records were found within 24 hours for{' '}
+          {patterns.map((pattern, index) => (
+            <strong key={pattern.instructor_id || pattern.instructor_name}>
+              {pattern.instructor_name} ({pattern.high_count})
+              {index < patterns.length - 1 ? ', ' : ''}
+            </strong>
+          ))}
+        </div>
+      )}
+
       <div className="filter-row">
         <div className="filter-group">
           <label>Status</label>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option>All</option>
             <option>Pending</option>
+            <option>Urgent</option>
             <option>Resolved</option>
             <option>Rejected</option>
           </select>
@@ -341,6 +406,7 @@ function ComplaintList() {
             disabled={selectedComplaints.length === 0}
           >
             <option>Pending</option>
+            <option>Urgent</option>
             <option>Resolved</option>
             <option>Rejected</option>
           </select>
@@ -376,7 +442,7 @@ function ComplaintList() {
           onClick={exportPDF}
           disabled={filteredComplaints.length === 0}
         >
-          Export PDF Report
+          Export AI PDF Report
         </button>
       </div>
 
@@ -397,6 +463,7 @@ function ComplaintList() {
               <th>Sentiment</th>
               <th>AI Category</th>
               <th>Severity</th>
+              <th>Confidence</th>
               <th>Message</th>
               <th>AI Reason</th>
               <th>Status</th>
@@ -407,7 +474,7 @@ function ComplaintList() {
           <tbody>
             {filteredComplaints.length === 0 ? (
               <tr>
-                <td colSpan="10">No feedback found. Try adjusting filters or wait for new submissions.</td>
+                <td colSpan="11">No feedback found. Try adjusting filters or wait for new submissions.</td>
               </tr>
             ) : (
               filteredComplaints.map((complaint) => (
@@ -429,6 +496,11 @@ function ComplaintList() {
                   <td>
                     <span className={`severity-badge ${(complaint.severity_level || 'none').toLowerCase()}`}>
                       {complaint.severity_level || 'None'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`confidence-badge ${getConfidenceClass(complaint.ai_confidence)}`}>
+                      {(Number(complaint.ai_confidence || 0) * 100).toFixed(0)}%
                     </span>
                   </td>
                   <td>{complaint.complaint_message}</td>
