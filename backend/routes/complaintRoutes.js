@@ -18,13 +18,13 @@ router.post('/', async (req, res) => {
     sentiment: 'Neutral',
     category: 'Uncategorized',
     severity_level: 'None',
-    severity_reason: 'AI analysis was not completed.'
+    severity_reason: 'AI analysis unavailable.'
   };
 
   try {
     ai = await analyzeFeedback(complaint_message);
   } catch (error) {
-    console.error('AI analysis failed, using fallback:', error);
+    console.error('AI analysis failed, using fallback:', error.message);
   }
 
   const safeSentiment = ai.sentiment || 'Neutral';
@@ -41,13 +41,14 @@ router.post('/', async (req, res) => {
     (
       subject_id,
       instructor_id,
+      category,
       complaint_message,
       sentiment,
       ai_category,
       severity_level,
       ai_severity_reason
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   db.query(
@@ -55,6 +56,7 @@ router.post('/', async (req, res) => {
     [
       subject_id,
       instructor_id,
+      safeCategory,
       complaint_message.trim(),
       safeSentiment,
       safeCategory,
@@ -68,7 +70,7 @@ router.post('/', async (req, res) => {
       }
 
       res.json({
-        message: 'Feedback submitted with AI analysis',
+        message: 'Feedback submitted successfully',
         complaint_id: result.insertId,
         ai_analysis: {
           sentiment: safeSentiment,
@@ -91,6 +93,7 @@ router.get('/', verifyToken, (req, res) => {
       subjects.subject_code,
       subjects.subject_description,
       instructors.instructor_name,
+      complaints.category,
       complaints.complaint_message,
       complaints.sentiment,
       complaints.ai_category,
@@ -271,10 +274,10 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
 
       const topCategorySql = `
         SELECT 
-          COALESCE(ai_category, 'Uncategorized') AS category,
+          COALESCE(ai_category, category, 'Uncategorized') AS category,
           COUNT(*) AS count
         FROM complaints
-        GROUP BY COALESCE(ai_category, 'Uncategorized')
+        GROUP BY COALESCE(ai_category, category, 'Uncategorized')
         ORDER BY count DESC
         LIMIT 1
       `;
@@ -306,11 +309,11 @@ router.get('/stats/:instructor_id', verifyToken, (req, res) => {
 
   const categorySql = `
     SELECT 
-      COALESCE(ai_category, 'Uncategorized') AS category,
+      COALESCE(ai_category, category, 'Uncategorized') AS category,
       COUNT(*) AS count
     FROM complaints
     WHERE instructor_id = ?
-    GROUP BY COALESCE(ai_category, 'Uncategorized')
+    GROUP BY COALESCE(ai_category, category, 'Uncategorized')
   `;
 
   db.query(categorySql, [instructor_id], (err, categoryResults) => {
@@ -367,7 +370,7 @@ router.get('/notifications/latest', (req, res) => {
       instructors.instructor_name,
       complaints.complaint_message,
       complaints.sentiment,
-      complaints.ai_category,
+      COALESCE(complaints.ai_category, complaints.category, 'Uncategorized') AS category,
       complaints.severity_level,
       complaints.ai_severity_reason,
       complaints.created_at
@@ -393,7 +396,7 @@ router.get('/notifications/latest', (req, res) => {
       instructor_name: latest.instructor_name,
       complaint_text: latest.complaint_message,
       sentiment: latest.sentiment || 'Neutral',
-      category: latest.ai_category || 'Uncategorized',
+      category: latest.category || 'Uncategorized',
       severity: latest.severity_level || 'None',
       severity_reason: latest.ai_severity_reason || 'No reason provided.',
       created_at: latest.created_at
