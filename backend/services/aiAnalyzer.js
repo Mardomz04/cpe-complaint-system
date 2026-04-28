@@ -1,50 +1,51 @@
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-async function analyzeFeedback(feedbackText) {
+async function analyzeFeedback(text) {
   try {
-    const response = await client.responses.create({
-      model: 'gpt-4.1-mini',
-      input: `
-Analyze this student feedback.
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-Return ONLY valid JSON:
+    const prompt = `
+Analyze this student feedback and return ONLY JSON:
+
 {
-  "sentiment": "Positive" | "Negative" | "Neutral",
-  "category": "Teaching Method" | "Grading Concern" | "Attendance" | "Behavior" | "Communication" | "Classroom Management" | "Learning Materials" | "Professionalism" | "Other",
-  "severity_level": "None" | "Low" | "Medium" | "High",
-  "severity_reason": "short reason"
+  "sentiment": "Positive | Negative | Neutral",
+  "category": "Teaching Method | Grading Concern | Attendance | Behavior | Communication",
+  "severity_level": "Low | Medium | High | None",
+  "severity_reason": "short explanation"
 }
 
 Rules:
-- Positive feedback must have severity_level: "None".
-- Negative feedback must have severity_level: "Low", "Medium", or "High".
-- High means harassment, humiliation, threats, discrimination, safety issue, or serious misconduct.
+- If Positive → severity_level = None
+- If Negative → assign severity properly
 
 Feedback:
-"${feedbackText}"
-      `
-    });
+"${text}"
+`;
 
-    const parsed = JSON.parse(response.output_text);
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const raw = response.text();
 
-    return {
-      sentiment: parsed.sentiment || 'Neutral',
-      category: parsed.category || 'Other',
-      severity_level: parsed.severity_level || 'None',
-      severity_reason: parsed.severity_reason || 'No reason provided.'
-    };
+    // Extract JSON safely
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) throw new Error("Invalid AI response");
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    return parsed;
+
   } catch (error) {
-    console.error('AI analysis error:', error);
+    console.error("Gemini error:", error.message);
 
+    // fallback (IMPORTANT)
     return {
-      sentiment: 'Neutral',
-      category: 'Uncategorized',
-      severity_level: 'None',
-      severity_reason: 'AI analysis failed.'
+      sentiment: "Neutral",
+      category: "Uncategorized",
+      severity_level: "None",
+      severity_reason: "Gemini failed"
     };
   }
 }
