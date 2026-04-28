@@ -18,7 +18,8 @@ router.post('/', async (req, res) => {
     sentiment: 'Neutral',
     category: 'Uncategorized',
     severity_level: 'None',
-    severity_reason: 'AI analysis unavailable.'
+    severity_reason: 'AI analysis unavailable.',
+    confidence: 0
   };
 
   try {
@@ -31,8 +32,9 @@ router.post('/', async (req, res) => {
   const safeCategory = ai.category || 'Uncategorized';
   let safeSeverity = ai.severity_level || 'None';
   const safeReason = ai.severity_reason || 'No reason provided.';
+  const safeConfidence = Number(ai.confidence || 0);
 
-  if (safeSentiment === 'Positive') {
+  if (safeSentiment === 'Positive' || safeSentiment === 'Neutral') {
     safeSeverity = 'None';
   }
 
@@ -46,9 +48,10 @@ router.post('/', async (req, res) => {
       sentiment,
       ai_category,
       severity_level,
-      ai_severity_reason
+      ai_severity_reason,
+      ai_confidence
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   db.query(
@@ -61,7 +64,8 @@ router.post('/', async (req, res) => {
       safeSentiment,
       safeCategory,
       safeSeverity,
-      safeReason
+      safeReason,
+      safeConfidence
     ],
     (err, result) => {
       if (err) {
@@ -76,7 +80,8 @@ router.post('/', async (req, res) => {
           sentiment: safeSentiment,
           category: safeCategory,
           severity_level: safeSeverity,
-          severity_reason: safeReason
+          severity_reason: safeReason,
+          confidence: safeConfidence
         }
       });
     }
@@ -99,6 +104,9 @@ router.get('/', verifyToken, (req, res) => {
       complaints.ai_category,
       complaints.severity_level,
       complaints.ai_severity_reason,
+      complaints.ai_confidence,
+      complaints.ai_validated,
+      complaints.admin_correction,
       complaints.status,
       complaints.created_at
     FROM complaints
@@ -214,6 +222,37 @@ router.put('/:complaint_id/status', verifyToken, (req, res) => {
 });
 
 // =======================================
+// AI VALIDATION / ADMIN CORRECTION
+// =======================================
+router.put('/:complaint_id/ai-validation', verifyToken, (req, res) => {
+  const { complaint_id } = req.params;
+  const { ai_validated, admin_correction } = req.body;
+
+  const sql = `
+    UPDATE complaints
+    SET ai_validated = ?, admin_correction = ?
+    WHERE complaint_id = ?
+  `;
+
+  db.query(
+    sql,
+    [Boolean(ai_validated), admin_correction || null, complaint_id],
+    (err, result) => {
+      if (err) {
+        console.error('AI validation update error:', err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Feedback not found' });
+      }
+
+      res.json({ message: 'AI validation updated successfully' });
+    }
+  );
+});
+
+// =======================================
 // DELETE ONE
 // =======================================
 router.delete('/:complaint_id', verifyToken, (req, res) => {
@@ -247,7 +286,12 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
       COUNT(*) AS total,
       SUM(status = 'Pending') AS pending,
       SUM(status = 'Resolved') AS resolved,
-      SUM(status = 'Rejected') AS rejected
+      SUM(status = 'Rejected') AS rejected,
+      SUM(sentiment = 'Positive') AS positive,
+      SUM(sentiment = 'Negative') AS negative,
+      SUM(sentiment = 'Neutral') AS neutral,
+      SUM(severity_level = 'High') AS highSeverity,
+      AVG(ai_confidence) AS avgConfidence
     FROM complaints
   `;
 
@@ -288,11 +332,18 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
           return res.status(500).json({ error: err.message });
         }
 
+        const total = totalResult[0] || {};
+
         res.json({
-          total: totalResult[0].total || 0,
-          pending: totalResult[0].pending || 0,
-          resolved: totalResult[0].resolved || 0,
-          rejected: totalResult[0].rejected || 0,
+          total: total.total || 0,
+          pending: total.pending || 0,
+          resolved: total.resolved || 0,
+          rejected: total.rejected || 0,
+          positive: total.positive || 0,
+          negative: total.negative || 0,
+          neutral: total.neutral || 0,
+          highSeverity: total.highSeverity || 0,
+          avgConfidence: Number(total.avgConfidence || 0),
           topInstructor: instructorResult[0] || null,
           topCategory: categoryResult[0] || null
         });
@@ -373,6 +424,7 @@ router.get('/notifications/latest', (req, res) => {
       COALESCE(complaints.ai_category, complaints.category, 'Uncategorized') AS category,
       complaints.severity_level,
       complaints.ai_severity_reason,
+      complaints.ai_confidence,
       complaints.created_at
     FROM complaints
     JOIN subjects ON complaints.subject_id = subjects.subject_id
@@ -399,6 +451,7 @@ router.get('/notifications/latest', (req, res) => {
       category: latest.category || 'Uncategorized',
       severity: latest.severity_level || 'None',
       severity_reason: latest.ai_severity_reason || 'No reason provided.',
+      confidence: Number(latest.ai_confidence || 0),
       created_at: latest.created_at
     });
   });
