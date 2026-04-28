@@ -38,6 +38,8 @@ router.post('/', async (req, res) => {
     safeSeverity = 'None';
   }
 
+  const safeStatus = safeSeverity === 'High' ? 'Urgent' : 'Pending';
+
   const sql = `
     INSERT INTO complaints 
     (
@@ -49,9 +51,10 @@ router.post('/', async (req, res) => {
       ai_category,
       severity_level,
       ai_severity_reason,
-      ai_confidence
+      ai_confidence,
+      status
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   db.query(
@@ -65,7 +68,8 @@ router.post('/', async (req, res) => {
       safeCategory,
       safeSeverity,
       safeReason,
-      safeConfidence
+      safeConfidence,
+      safeStatus
     ],
     (err, result) => {
       if (err) {
@@ -81,7 +85,8 @@ router.post('/', async (req, res) => {
           category: safeCategory,
           severity_level: safeSeverity,
           severity_reason: safeReason,
-          confidence: safeConfidence
+          confidence: safeConfidence,
+          status: safeStatus
         }
       });
     }
@@ -112,7 +117,13 @@ router.get('/', verifyToken, (req, res) => {
     FROM complaints
     JOIN subjects ON complaints.subject_id = subjects.subject_id
     JOIN instructors ON complaints.instructor_id = instructors.instructor_id
-    ORDER BY complaints.created_at DESC
+    ORDER BY 
+      CASE 
+        WHEN complaints.status = 'Urgent' THEN 0
+        WHEN complaints.severity_level = 'High' THEN 1
+        ELSE 2
+      END,
+      complaints.created_at DESC
   `;
 
   db.query(sql, (err, results) => {
@@ -131,7 +142,7 @@ router.get('/', verifyToken, (req, res) => {
 router.put('/bulk/status', verifyToken, (req, res) => {
   const { complaint_ids, status } = req.body;
 
-  const allowedStatuses = ['Pending', 'Resolved', 'Rejected'];
+  const allowedStatuses = ['Pending', 'Resolved', 'Rejected', 'Urgent'];
 
   if (!Array.isArray(complaint_ids) || complaint_ids.length === 0) {
     return res.status(400).json({ error: 'Please select at least one feedback.' });
@@ -195,7 +206,7 @@ router.put('/:complaint_id/status', verifyToken, (req, res) => {
   const { complaint_id } = req.params;
   const { status } = req.body;
 
-  const allowedStatuses = ['Pending', 'Resolved', 'Rejected'];
+  const allowedStatuses = ['Pending', 'Resolved', 'Rejected', 'Urgent'];
 
   if (!allowedStatuses.includes(status)) {
     return res.status(400).json({ error: 'Invalid status value' });
@@ -287,6 +298,7 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
       SUM(status = 'Pending') AS pending,
       SUM(status = 'Resolved') AS resolved,
       SUM(status = 'Rejected') AS rejected,
+      SUM(status = 'Urgent') AS urgent,
       SUM(sentiment = 'Positive') AS positive,
       SUM(sentiment = 'Negative') AS negative,
       SUM(sentiment = 'Neutral') AS neutral,
@@ -339,6 +351,7 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
           pending: total.pending || 0,
           resolved: total.resolved || 0,
           rejected: total.rejected || 0,
+          urgent: total.urgent || 0,
           positive: total.positive || 0,
           negative: total.negative || 0,
           neutral: total.neutral || 0,
@@ -349,6 +362,35 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
         });
       });
     });
+  });
+});
+
+// =======================================
+// SMART PATTERN DETECTION
+// Detects instructors with 3+ High severity feedback in 24 hours
+// =======================================
+router.get('/analytics/patterns', verifyToken, (req, res) => {
+  const sql = `
+    SELECT 
+      instructors.instructor_id,
+      instructors.instructor_name,
+      COUNT(*) AS high_count
+    FROM complaints
+    JOIN instructors ON complaints.instructor_id = instructors.instructor_id
+    WHERE complaints.severity_level = 'High'
+      AND complaints.created_at >= NOW() - INTERVAL 1 DAY
+    GROUP BY instructors.instructor_id, instructors.instructor_name
+    HAVING high_count >= 3
+    ORDER BY high_count DESC
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('Pattern detection error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    res.json(results || []);
   });
 });
 
@@ -425,6 +467,7 @@ router.get('/notifications/latest', (req, res) => {
       complaints.severity_level,
       complaints.ai_severity_reason,
       complaints.ai_confidence,
+      complaints.status,
       complaints.created_at
     FROM complaints
     JOIN subjects ON complaints.subject_id = subjects.subject_id
@@ -452,6 +495,7 @@ router.get('/notifications/latest', (req, res) => {
       severity: latest.severity_level || 'None',
       severity_reason: latest.ai_severity_reason || 'No reason provided.',
       confidence: Number(latest.ai_confidence || 0),
+      status: latest.status || 'Pending',
       created_at: latest.created_at
     });
   });
