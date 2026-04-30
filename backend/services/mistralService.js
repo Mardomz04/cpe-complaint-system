@@ -4,55 +4,83 @@ const client = new Mistral({
   apiKey: process.env.MISTRAL_API_KEY,
 });
 
-async function analyzeFeedback(message) {
+function safeParseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+    throw err;
+  }
+}
+
+async function analyzeFeedback(complaint_message) {
   if (!process.env.MISTRAL_API_KEY) {
-    throw new Error("Missing MISTRAL_API_KEY");
+    throw new Error("MISTRAL_API_KEY is missing.");
   }
 
-  const prompt = `
-You are an AI assistant for an Instructor Feedback System.
+  const response = await client.chat.complete({
+    model: "mistral-small-latest",
+    temperature: 0.2,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are an AI classifier for an Instructor Feedback System. Return only valid JSON.",
+      },
+      {
+        role: "user",
+        content: `
+Analyze this instructor feedback:
 
-Analyze this student feedback:
+"${complaint_message}"
 
-"${message}"
-
-Return ONLY valid JSON with this structure:
+Return ONLY this JSON format:
 {
   "sentiment": "Positive" | "Negative" | "Neutral",
   "ai_category": "Teaching Quality" | "Behavior" | "Grading" | "Communication" | "Attendance" | "Learning Materials" | "Other",
   "severity_level": "LOW" | "MEDIUM" | "HIGH",
-  "ai_severity_reason": "short explanation"
+  "ai_severity_reason": "short clear explanation",
+  "ai_confidence": 0.00
 }
 
 Rules:
-- Positive feedback should usually be LOW severity.
-- Negative feedback involving harassment, discrimination, threats, humiliation, or serious misconduct should be HIGH.
-- Mild complaints should be LOW or MEDIUM.
-`;
-
-  const response = await client.chat.complete({
-    model: "mistral-small-latest",
-    messages: [
-      {
-        role: "user",
-        content: prompt,
+- Positive feedback = LOW severity.
+- Negative feedback with rude behavior, humiliation, discrimination, harassment, threats, or serious misconduct = HIGH.
+- Academic issues like fast teaching, unclear lessons, late feedback = MEDIUM unless severe.
+- Simple suggestions or mild concerns = LOW.
+- ai_confidence must be a number from 0.00 to 1.00.
+`,
       },
     ],
-    temperature: 0.2,
   });
 
-  const text = response.choices?.[0]?.message?.content;
+  const rawText = response.choices?.[0]?.message?.content || "";
 
   try {
-    return JSON.parse(text);
-  } catch (err) {
-    console.error("Mistral raw response:", text);
+    const parsed = safeParseJson(rawText);
+
+    return {
+      sentiment: parsed.sentiment || "Neutral",
+      ai_category: parsed.ai_category || "Other",
+      severity_level: parsed.severity_level || "LOW",
+      ai_severity_reason:
+        parsed.ai_severity_reason || "No severity reason provided.",
+      ai_confidence:
+        typeof parsed.ai_confidence === "number" ? parsed.ai_confidence : 0.5,
+    };
+  } catch (error) {
+    console.error("Mistral parse error:", error);
+    console.error("Raw Mistral response:", rawText);
 
     return {
       sentiment: "Neutral",
       ai_category: "Other",
       severity_level: "LOW",
-      ai_severity_reason: "AI response could not be parsed safely.",
+      ai_severity_reason: "AI analysis failed, fallback values used.",
+      ai_confidence: 0.0,
     };
   }
 }
