@@ -85,4 +85,4 @@ Rules:
   }
 }
 
-module.exports = { analyzeFeedback };
+module.exports = analyzeFeedback;
