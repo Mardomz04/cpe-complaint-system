@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/authMiddleware');
-const analyzeFeedback = require('../services/aiAnalyzer');
+
+// Mistral AI analyzer
+const analyzeFeedback = require('../services/mistralAnalyzer');
 
 // =======================================
-// PUBLIC: ADD FEEDBACK WITH AI ANALYSIS
+// PUBLIC: ADD FEEDBACK WITH MISTRAL AI ANALYSIS
 // =======================================
 router.post('/', async (req, res) => {
   const { subject_id, instructor_id, complaint_message } = req.body;
@@ -16,23 +18,28 @@ router.post('/', async (req, res) => {
 
   let ai = {
     sentiment: 'Neutral',
-    category: 'Uncategorized',
+    ai_category: 'Uncategorized',
     severity_level: 'None',
-    severity_reason: 'AI analysis unavailable.',
-    confidence: 0
+    ai_severity_reason: 'AI analysis unavailable.',
+    ai_confidence: 0
   };
 
   try {
     ai = await analyzeFeedback(complaint_message);
   } catch (error) {
-    console.error('AI analysis failed, using fallback:', error.message);
+    console.error('Mistral AI analysis failed, using fallback:', error.message);
   }
 
   const safeSentiment = ai.sentiment || 'Neutral';
-  const safeCategory = ai.category || 'Uncategorized';
+  const safeCategory = ai.ai_category || ai.category || 'Uncategorized';
+
   let safeSeverity = ai.severity_level || 'None';
-  const safeReason = ai.severity_reason || 'No reason provided.';
-  const safeConfidence = Number(ai.confidence || 0);
+  const safeReason =
+    ai.ai_severity_reason ||
+    ai.severity_reason ||
+    'No reason provided.';
+
+  const safeConfidence = Number(ai.ai_confidence || ai.confidence || 0);
 
   if (safeSentiment === 'Positive' || safeSentiment === 'Neutral') {
     safeSeverity = 'None';
@@ -60,8 +67,8 @@ router.post('/', async (req, res) => {
   db.query(
     sql,
     [
-      subject_id,
-      instructor_id,
+      Number(subject_id),
+      Number(instructor_id),
       safeCategory,
       complaint_message.trim(),
       safeSentiment,
@@ -83,9 +90,12 @@ router.post('/', async (req, res) => {
         ai_analysis: {
           sentiment: safeSentiment,
           category: safeCategory,
+          ai_category: safeCategory,
           severity_level: safeSeverity,
           severity_reason: safeReason,
+          ai_severity_reason: safeReason,
           confidence: safeConfidence,
+          ai_confidence: safeConfidence,
           status: safeStatus
         }
       });
@@ -367,7 +377,6 @@ router.get('/analytics/summary', verifyToken, (req, res) => {
 
 // =======================================
 // SMART PATTERN DETECTION
-// Detects instructors with 3+ High severity feedback in 24 hours
 // =======================================
 router.get('/analytics/patterns', verifyToken, (req, res) => {
   const sql = `
