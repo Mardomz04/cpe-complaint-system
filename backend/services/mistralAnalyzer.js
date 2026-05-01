@@ -9,11 +9,36 @@ function safeParseJson(text) {
     return JSON.parse(text);
   } catch (err) {
     const match = text.match(/\{[\s\S]*\}/);
-    if (match) {
-      return JSON.parse(match[0]);
-    }
+    if (match) return JSON.parse(match[0]);
     throw err;
   }
+}
+
+function normalizeSeverity(value) {
+  const v = String(value || "").toLowerCase();
+
+  if (v.includes("high")) return "High";
+  if (v.includes("medium")) return "Medium";
+  if (v.includes("low")) return "Low";
+  if (v.includes("none")) return "None";
+
+  return "None";
+}
+
+function normalizeSentiment(value) {
+  const v = String(value || "").toLowerCase();
+
+  if (v.includes("positive")) return "Positive";
+  if (v.includes("negative")) return "Negative";
+  if (v.includes("neutral")) return "Neutral";
+
+  return "Neutral";
+}
+
+function normalizeConfidence(value) {
+  const num = Number(value);
+  if (Number.isNaN(num)) return 0.5;
+  return Math.min(1, Math.max(0, num));
 }
 
 async function analyzeFeedback(complaint_message) {
@@ -28,7 +53,7 @@ async function analyzeFeedback(complaint_message) {
       {
         role: "system",
         content:
-          "You are an AI classifier for an Instructor Feedback System. Return only valid JSON.",
+          "You are an AI classifier for an Instructor Feedback System. Return only valid JSON. Do not use markdown.",
       },
       {
         role: "user",
@@ -39,18 +64,19 @@ Analyze this instructor feedback:
 
 Return ONLY this JSON format:
 {
-  "sentiment": "Positive" | "Negative" | "Neutral",
-  "ai_category": "Teaching Quality" | "Behavior" | "Grading" | "Communication" | "Attendance" | "Learning Materials" | "Other",
-  "severity_level": "LOW" | "MEDIUM" | "HIGH",
+  "sentiment": "Positive | Negative | Neutral",
+  "ai_category": "Teaching Quality | Behavior | Grading | Communication | Attendance | Learning Materials | Other",
+  "severity_level": "None | Low | Medium | High",
   "ai_severity_reason": "short clear explanation",
   "ai_confidence": 0.00
 }
 
 Rules:
-- Positive feedback = LOW severity.
-- Negative feedback with rude behavior, humiliation, discrimination, harassment, threats, or serious misconduct = HIGH.
-- Academic issues like fast teaching, unclear lessons, late feedback = MEDIUM unless severe.
-- Simple suggestions or mild concerns = LOW.
+- Positive feedback = severity "None".
+- Neutral feedback = severity "None".
+- Negative feedback with rude behavior, humiliation, discrimination, harassment, threats, or serious misconduct = severity "High".
+- Academic issues like fast teaching, unclear lessons, late feedback = severity "Medium" unless severe.
+- Simple suggestions or mild concerns = severity "Low".
 - ai_confidence must be a number from 0.00 to 1.00.
 `,
       },
@@ -62,14 +88,20 @@ Rules:
   try {
     const parsed = safeParseJson(rawText);
 
+    const sentiment = normalizeSentiment(parsed.sentiment);
+    let severity_level = normalizeSeverity(parsed.severity_level);
+
+    if (sentiment === "Positive" || sentiment === "Neutral") {
+      severity_level = "None";
+    }
+
     return {
-      sentiment: parsed.sentiment || "Neutral",
+      sentiment,
       ai_category: parsed.ai_category || "Other",
-      severity_level: parsed.severity_level || "LOW",
+      severity_level,
       ai_severity_reason:
         parsed.ai_severity_reason || "No severity reason provided.",
-      ai_confidence:
-        typeof parsed.ai_confidence === "number" ? parsed.ai_confidence : 0.5,
+      ai_confidence: normalizeConfidence(parsed.ai_confidence),
     };
   } catch (error) {
     console.error("Mistral parse error:", error);
@@ -78,7 +110,7 @@ Rules:
     return {
       sentiment: "Neutral",
       ai_category: "Other",
-      severity_level: "LOW",
+      severity_level: "None",
       ai_severity_reason: "AI analysis failed, fallback values used.",
       ai_confidence: 0.0,
     };
