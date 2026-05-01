@@ -66,7 +66,7 @@ function ComplaintList() {
   const instructors = [...new Set(complaints.map(c => c.instructor_name).filter(Boolean))];
   const categories = [...new Set(complaints.map(c => c.ai_category).filter(Boolean))];
   const sentiments = [...new Set(complaints.map(c => c.sentiment).filter(Boolean))];
-  const severities = [...new Set(complaints.map(c => c.severity_level).filter(Boolean))];
+  const severities = ['High', 'Medium', 'Low', 'None'];
 
   const filteredComplaints = complaints.filter((complaint) => {
     const matchesStatus =
