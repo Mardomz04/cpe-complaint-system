@@ -35,6 +35,26 @@ function normalizeSentiment(value) {
   return "Neutral";
 }
 
+function normalizeCategory(value) {
+  const allowed = [
+    "Teaching Quality",
+    "Behavior",
+    "Grading",
+    "Communication",
+    "Attendance",
+    "Learning Materials",
+    "Other",
+  ];
+
+  if (!value) return "Other";
+
+  const found = allowed.find(
+    (item) => item.toLowerCase() === String(value).trim().toLowerCase()
+  );
+
+  return found || "Other";
+}
+
 function normalizeConfidence(value) {
   const num = Number(value);
   if (Number.isNaN(num)) return 0.5;
@@ -71,12 +91,17 @@ Return ONLY this JSON format:
   "ai_confidence": 0.00
 }
 
-Rules:
-- Positive feedback = severity "None".
-- Neutral feedback = severity "None".
-- Negative feedback with rude behavior, humiliation, discrimination, harassment, threats, or serious misconduct = severity "High".
-- Academic issues like fast teaching, unclear lessons, late feedback = severity "Medium" unless severe.
-- Simple suggestions or mild concerns = severity "Low".
+Severity guide:
+- None: Positive feedback, neutral observations, compliments, or comments without a problem.
+- Low: Mild negative feedback, small inconvenience, minor suggestion, weak complaint, or issue that does not seriously affect learning.
+- Medium: Academic concern that affects learning, such as confusing explanations, fast pacing, unclear instructions, delayed feedback, poor communication, or repeated minor issues.
+- High: Serious misconduct, harassment, discrimination, humiliation, threats, abusive behavior, unsafe behavior, or severe repeated complaints.
+
+Important:
+- Do NOT overuse Medium.
+- Use Low when the complaint is mild or only suggests improvement.
+- Use Medium only when the issue clearly affects student learning.
+- Use High only for serious or harmful incidents.
 - ai_confidence must be a number from 0.00 to 1.00.
 `,
       },
@@ -97,7 +122,7 @@ Rules:
 
     return {
       sentiment,
-      ai_category: parsed.ai_category || "Other",
+      ai_category: normalizeCategory(parsed.ai_category),
       severity_level,
       ai_severity_reason:
         parsed.ai_severity_reason || "No severity reason provided.",
